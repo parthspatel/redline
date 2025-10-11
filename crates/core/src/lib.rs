@@ -39,15 +39,14 @@ pub mod tokenizers;
 pub mod diff;
 pub mod algorithms;
 pub mod analyzers;
-pub mod classifiers;
 pub mod metrics;
 pub mod execution;
 
 // Re-export main types
-pub use config::{DiffConfig, DiffAlgorithm};
+pub use config::{DiffAlgorithm, DiffConfig};
 pub use engine::DiffEngine;
-pub use pipeline::{TextPipeline, NormalizationLayer};
-pub use diff::{DiffResult, DiffOperation, EditType, ChangeCategory};
+pub use pipeline::{NormalizationLayer, TextPipeline};
+pub use diff::{ChangeCategory, DiffOperation, DiffResult, EditType};
 // pub use analyzers::{AnalysisResult, AnalysisReport};
 
 /// Main entry point for computing diffs between two strings

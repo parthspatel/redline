@@ -226,54 +226,6 @@ impl ExecutionPlanBuilder {
         self
     }
 
-    /// Add metric computation for pairwise metrics (depends on text metrics)
-    pub fn add_pairwise_metrics(&mut self) -> &mut Self {
-        // Word overlap depends on word count
-        self.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
-
-        // Character similarity depends on char count
-        self.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
-            .with_dependency(ExecutionNode::Metric(MetricType::CharCount)));
-
-        // Readability diff depends on Flesch scores
-        self.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::ReadabilityDiff))
-            .with_dependencies(vec![
-                ExecutionNode::Metric(MetricType::FleschReadingEase),
-            ]));
-
-        // Word count diff depends on word counts
-        self.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordCountDiff))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
-
-        self
-    }
-
-    /// Add semantic similarity analysis (depends on word overlap)
-    pub fn add_semantic_similarity_analysis(&mut self) -> &mut Self {
-        self.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::SemanticSimilarity))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordOverlap)));
-        self
-    }
-
-    /// Add classifier that uses all features
-    pub fn add_classifier(&mut self, name: impl Into<String>) -> &mut Self {
-        let classifier_node = ExecutionNode::Classifier(name.into());
-
-        // Classifiers depend on all metrics being computed
-        let deps = vec![
-            ExecutionNode::Metric(MetricType::CharSimilarity),
-            ExecutionNode::Metric(MetricType::WordOverlap),
-            ExecutionNode::Metric(MetricType::ReadabilityDiff),
-            ExecutionNode::Metric(MetricType::WordCountDiff),
-            ExecutionNode::Metric(MetricType::WhitespaceRatioDiff),
-            ExecutionNode::Metric(MetricType::NegationChanged),
-        ];
-
-        self.add_node(NodeDependencies::new(classifier_node).with_dependencies(deps));
-        self
-    }
-
     /// Build the execution plan
     pub fn build(self) -> Result<ExecutionPlan, ExecutionError> {
         ExecutionPlan::new(self.dependencies)
@@ -368,7 +320,10 @@ mod tests {
     #[test]
     fn test_get_required_metrics() {
         let mut builder = ExecutionPlanBuilder::new();
-        builder.add_pairwise_metrics();
+
+        // Manually add some metrics to test get_required_metrics
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap)));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity)));
 
         let plan = builder.build().unwrap();
         let metrics = plan.get_required_metrics();

@@ -56,7 +56,7 @@ pub struct DiffConfig {
     pub(crate) analyzers: Vec<Box<dyn crate::analyzers::SingleDiffAnalyzer>>,
 
     /// Change classifiers to run
-    pub(crate) classifiers: Vec<Box<dyn crate::classifiers::ChangeClassifier>>,
+    pub(crate) classifiers: Vec<Box<dyn crate::analyzers::classifiers::ChangeClassifier>>,
 }
 
 impl Default for DiffConfig {
@@ -90,7 +90,7 @@ impl DiffConfig {
     }
 
     /// Add a classifier to the configuration
-    pub fn add_classifier(mut self, classifier: Box<dyn crate::classifiers::ChangeClassifier>) -> Self {
+    pub fn add_classifier(mut self, classifier: Box<dyn crate::analyzers::classifiers::ChangeClassifier>) -> Self {
         self.classifiers.push(classifier);
         self
     }
@@ -101,48 +101,6 @@ impl DiffConfig {
         use crate::execution::{ExecutionPlanBuilder, ExecutionNode, MetricType, NodeDependencies};
 
         let mut builder = ExecutionPlanBuilder::new();
-
-        // Always compute base text metrics (these have no dependencies)
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::SentenceCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::SyllableCount)));
-
-        // Derived metrics that depend on base metrics
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::FleschReadingEase))
-            .with_dependencies(vec![
-                ExecutionNode::Metric(MetricType::WordCount),
-                ExecutionNode::Metric(MetricType::SentenceCount),
-                ExecutionNode::Metric(MetricType::SyllableCount),
-            ]));
-
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::AvgWordLength))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
-
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::AvgSentenceLength))
-            .with_dependencies(vec![
-                ExecutionNode::Metric(MetricType::WordCount),
-                ExecutionNode::Metric(MetricType::SentenceCount),
-            ]));
-
-        // Linguistic features
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::StopwordRatio))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WhitespaceRatio))
-            .with_dependency(ExecutionNode::Metric(MetricType::CharCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::HasNegation)));
-
-        // Pairwise comparison metrics
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::LevenshteinDistance)));
-
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
-            .with_dependency(ExecutionNode::Metric(MetricType::LevenshteinDistance)));
-
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
-
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::LengthRatio))
-            .with_dependency(ExecutionNode::Metric(MetricType::CharCount)));
 
         // Add dependencies from configured analyzers
         for analyzer in &self.analyzers {
@@ -158,27 +116,22 @@ impl DiffConfig {
             }
         }
 
-        // Legacy flag-based dependencies (for backward compatibility)
-        if self.analyze_style || self.classify_edits {
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::ReadabilityDiff))
-                .with_dependency(ExecutionNode::Metric(MetricType::FleschReadingEase)));
-
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WhitespaceRatioDiff))
-                .with_dependency(ExecutionNode::Metric(MetricType::WhitespaceRatio)));
-        }
-
-        if self.classify_edits {
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordCountDiff))
-                .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
-
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::NegationChanged))
-                .with_dependency(ExecutionNode::Metric(MetricType::HasNegation)));
-        }
-
-        // Semantic similarity depends on word overlap
+        // Legacy flag-based dependencies (for backward compatibility with old API)
+        // TODO: Eventually remove these flags in favor of explicit analyzer/classifier registration
         if self.compute_semantic_similarity {
             builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::SemanticSimilarity))
                 .with_dependency(ExecutionNode::Metric(MetricType::WordOverlap)));
+        }
+
+        if self.analyze_style {
+            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::ReadabilityDiff))
+                .with_dependency(ExecutionNode::Metric(MetricType::FleschReadingEase)));
+        }
+
+        if self.classify_edits {
+            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
+                .with_dependency(ExecutionNode::Metric(MetricType::LevenshteinDistance)));
+            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap)));
         }
 
         // Build and return the plan
@@ -326,9 +279,9 @@ mod tests {
         // Should not include semantic similarity
         assert!(!metrics_minimal.contains(&MetricType::SemanticSimilarity));
 
-        // But should still include base metrics
-        assert!(metrics_minimal.contains(&MetricType::WordCount));
-        assert!(metrics_minimal.contains(&MetricType::CharCount));
+        // Minimal config with no analyzers/classifiers should have empty execution plan
+        // (metrics are only computed when something explicitly needs them)
+        assert_eq!(metrics_minimal.len(), 0);
     }
 
     #[test]
@@ -348,7 +301,7 @@ mod tests {
     #[test]
     fn test_execution_plan_from_classifiers() {
         use crate::execution::MetricType;
-        use crate::classifiers::naive_bayes::NaiveBayesClassifier;
+        use crate::analyzers::classifiers::naive_bayes::NaiveBayesClassifier;
 
         // When a classifier is added, its dependencies should be included in the plan
         let config = DiffConfig::new()
@@ -364,5 +317,32 @@ mod tests {
         assert!(metrics.contains(&MetricType::WordCountDiff));
         assert!(metrics.contains(&MetricType::WhitespaceRatioDiff));
         assert!(metrics.contains(&MetricType::NegationChanged));
+    }
+
+    #[test]
+    fn test_feature_analyzers_share_metrics() {
+        use crate::execution::MetricType;
+        use crate::analyzers::single::{CharSimilarityAnalyzer, WordOverlapAnalyzer};
+        use crate::analyzers::classifiers::naive_bayes::NaiveBayesClassifier;
+
+        // Add feature analyzers AND a classifier - they should share the same cached metrics
+        let config = DiffConfig::new()
+            .add_analyzer(Box::new(CharSimilarityAnalyzer::new()))
+            .add_analyzer(Box::new(WordOverlapAnalyzer::new()))
+            .add_classifier(Box::new(NaiveBayesClassifier::new()));
+
+        let plan = config.build_execution_plan();
+        let metrics = plan.get_required_metrics();
+
+        // Metrics should be declared (no duplicates - the execution plan deduplicates)
+        assert!(metrics.contains(&MetricType::CharSimilarity));
+        assert!(metrics.contains(&MetricType::WordOverlap));
+
+        // Count how many times CharSimilarity appears (should be 1, not 2)
+        let char_sim_count = metrics.iter().filter(|m| **m == MetricType::CharSimilarity).count();
+        assert_eq!(char_sim_count, 1, "CharSimilarity should only be computed once");
+
+        let word_overlap_count = metrics.iter().filter(|m| **m == MetricType::WordOverlap).count();
+        assert_eq!(word_overlap_count, 1, "WordOverlap should only be computed once");
     }
 }

@@ -9,6 +9,13 @@ pub mod syntactic;
 pub mod naive_bayes;
 pub mod bert_semantic;
 
+// Re-export all analyzers
+pub use readability::*;
+pub use stylistic::*;
+pub use syntactic::*;
+pub use naive_bayes::*;
+pub use bert_semantic::*;
+
 use crate::diff::{ChangeCategory, DiffOperation, DiffResult};
 
 /// Result of a classification

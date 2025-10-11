@@ -22,7 +22,7 @@ use redline_core::analyzers::single::{
 use redline_core::analyzers::{AnalysisReport, MultiDiffAnalyzer, SingleDiffAnalyzer};
 
 // Import classifiers
-use redline_core::classifiers::{ChangeClassifier, RuleBasedClassifier};
+use redline_core::analyzers::classifiers::{ChangeClassifier, RuleBasedClassifier};
 
 const LINE: &str = "----------------------------------------";
 
