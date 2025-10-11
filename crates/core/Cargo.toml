@@ -1,0 +1,49 @@
+[package]
+name = "redline-core"
+version = "0.1.0"
+edition = "2024"
+authors = ["Parth Patel <parthspatel.nj@gmail.com>"]
+license = ""
+description = "A comprehensive text diffing library with extensible normalization and tokenization"
+repository = "https://github.com/parthspatel/redline"
+keywords = ["diff", "text", "nlp", "tokenization", "normalization"]
+categories = ["text-processing", "algorithms"]
+
+[lib]
+name = "redline_core"
+path = "src/lib.rs"
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[[example]]
+name = "advanced_pipeline"
+path = "examples/advanced_pipeline.rs"
+[[example]]
+name = "analyzers_demo"
+path = "examples/analyzers_demo.rs"
+
+[dependencies]
+# For Unicode normalization (accents removal)
+unicode-normalization = "0.1"
+
+# For BERT-based semantic analysis (optional, feature-gated)
+rust-bert = { version = "0.23.0", optional = true }
+tch = { version = "0.17.0", optional = true }
+
+# For statistical analysis (threshold learning)
+ndarray = { version = "0.16.1", optional = true }
+linfa = { version = "0.8.0", optional = true }
+linfa-clustering = { version = "0.8.0", optional = true }
+
+[features]
+default = []
+bert = ["rust-bert","tch", "ndarray"]
+ml-extras = ["ndarray", "linfa", "linfa-clustering"]
+full = ["bert", "ml-extras"]
+
+[dev-dependencies]
+# For testing
+criterion = "0.7.0"
+
