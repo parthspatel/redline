@@ -3,4 +3,4 @@
 // This module is reserved for advanced semantic similarity techniques
 // such as sentence embeddings (BERT, SBERT, USE) when those dependencies are added
 
-pub use super::ml::StandardFeatureExtractor;
+pub use super::naive_bayes::StandardFeatureExtractor;

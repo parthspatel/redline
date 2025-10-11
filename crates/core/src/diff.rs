@@ -2,6 +2,7 @@
 
 use crate::mapping::CharSpan;
 use crate::tokenizers::Token;
+use crate::metrics::PairwiseMetrics;
 use std::fmt;
 
 /// Type of edit operation
@@ -199,27 +200,30 @@ pub struct DiffAnalysis {
 pub struct DiffResult {
     /// List of all diff operations
     pub operations: Vec<DiffOperation>,
-    
+
     /// Statistics about the diff
     pub statistics: DiffStatistics,
-    
+
     /// Analysis results
     pub analysis: DiffAnalysis,
-    
+
     /// Original text
     pub original_text: String,
-    
+
     /// Modified text
     pub modified_text: String,
-    
+
     /// Semantic similarity (shortcut to analysis.semantic_similarity)
     pub semantic_similarity: f64,
+
+    /// Cached metrics (computed once, reused by analyzers/classifiers)
+    pub metrics: Option<PairwiseMetrics>,
 }
 
 impl DiffResult {
     pub fn new(original_text: String, modified_text: String) -> Self {
         let stats = DiffStatistics::new(original_text.len(), modified_text.len());
-        
+
         Self {
             operations: Vec::new(),
             statistics: stats,
@@ -227,6 +231,31 @@ impl DiffResult {
             original_text,
             modified_text,
             semantic_similarity: 1.0,
+            metrics: None,
+        }
+    }
+
+    /// Set cached metrics
+    pub fn with_metrics(mut self, metrics: PairwiseMetrics) -> Self {
+        self.metrics = Some(metrics);
+        self
+    }
+
+    /// Get metrics, computing and caching if not already cached
+    pub fn get_metrics(&mut self) -> &PairwiseMetrics {
+        if self.metrics.is_none() {
+            self.metrics = Some(PairwiseMetrics::compute(&self.original_text, &self.modified_text));
+        }
+        self.metrics.as_ref().unwrap()
+    }
+
+    /// Get metrics immutably, computing on-the-fly if needed (doesn't cache)
+    pub fn get_metrics_ref(&self) -> std::borrow::Cow<PairwiseMetrics> {
+        if let Some(ref metrics) = self.metrics {
+            std::borrow::Cow::Borrowed(metrics)
+        } else {
+            // Compute but don't cache (since we're immutable)
+            std::borrow::Cow::Owned(PairwiseMetrics::compute(&self.original_text, &self.modified_text))
         }
     }
 

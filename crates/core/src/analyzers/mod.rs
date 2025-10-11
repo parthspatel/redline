@@ -4,9 +4,9 @@
 //! - Single diff analyzers: Analyze individual diff results
 //! - Multi-diff analyzers: Analyze collections of diffs to find patterns
 
-pub mod single;
 pub mod multi;
 pub mod selectors;
+pub mod single;
 
 use crate::diff::DiffResult;
 use std::collections::HashMap;
@@ -16,16 +16,16 @@ use std::collections::HashMap;
 pub struct AnalysisResult {
     /// Name of the analyzer that produced this result
     pub analyzer_name: String,
-    
+
     /// Metrics computed by the analyzer
     pub metrics: HashMap<String, f64>,
-    
+
     /// Textual insights or findings
     pub insights: Vec<String>,
-    
+
     /// Confidence score (0.0 to 1.0)
     pub confidence: f64,
-    
+
     /// Metadata about the analysis
     pub metadata: HashMap<String, String>,
 }
@@ -72,6 +72,12 @@ pub trait SingleDiffAnalyzer: Send + Sync {
         ""
     }
 
+    /// Declare the metric dependencies this analyzer requires
+    /// Returns a list of NodeDependencies that will be added to the execution plan
+    fn dependencies(&self) -> Vec<crate::execution::NodeDependencies> {
+        Vec::new()
+    }
+
     /// Clone into a box
     fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer>;
 }
@@ -95,6 +101,12 @@ pub trait MultiDiffAnalyzer: Send + Sync {
         ""
     }
 
+    /// Declare the metric dependencies this analyzer requires
+    /// Returns a list of NodeDependencies that will be added to the execution plan
+    fn dependencies(&self) -> Vec<crate::execution::NodeDependencies> {
+        Vec::new()
+    }
+
     /// Clone into a box
     fn clone_box(&self) -> Box<dyn MultiDiffAnalyzer>;
 }
@@ -110,7 +122,7 @@ impl Clone for Box<dyn MultiDiffAnalyzer> {
 pub struct AnalysisReport {
     /// All analysis results
     pub results: Vec<AnalysisResult>,
-    
+
     /// Summary statistics
     pub summary: AnalysisSummary,
 }
@@ -174,7 +186,7 @@ impl Default for AnalysisReport {
 pub struct AnalysisSummary {
     /// Average metrics across all analyses
     pub average_metrics: HashMap<String, f64>,
-    
+
     /// Total number of analyses performed
     pub total_analyses: usize,
 }
@@ -188,7 +200,7 @@ mod tests {
         let mut result = AnalysisResult::new("test_analyzer");
         result.add_metric("score", 0.85);
         result.add_insight("Test insight");
-        
+
         assert_eq!(result.metrics.get("score"), Some(&0.85));
         assert_eq!(result.insights.len(), 1);
     }
@@ -196,17 +208,17 @@ mod tests {
     #[test]
     fn test_analysis_report() {
         let mut report = AnalysisReport::new();
-        
+
         let mut result1 = AnalysisResult::new("analyzer1");
         result1.add_metric("metric1", 0.5);
-        
+
         let mut result2 = AnalysisResult::new("analyzer2");
         result2.add_metric("metric1", 1.0);
-        
+
         report.add_result(result1);
         report.add_result(result2);
         report.compute_summary();
-        
+
         assert_eq!(report.summary.total_analyses, 2);
         assert_eq!(report.summary.average_metrics.get("metric1"), Some(&0.75));
     }

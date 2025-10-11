@@ -6,7 +6,7 @@ pub mod semantic;
 pub mod readability;
 pub mod stylistic;
 pub mod syntactic;
-pub mod ml;
+pub mod naive_bayes;
 pub mod bert_semantic;
 
 use crate::diff::{ChangeCategory, DiffOperation, DiffResult};
@@ -52,6 +52,12 @@ pub trait ChangeClassifier: Send + Sync {
     /// Classify a single operation
     fn classify_operation(&self, operation: &DiffOperation) -> ClassificationResult;
 
+    /// Classify a single operation with cached metrics (more efficient)
+    fn classify_operation_with_metrics(&self, operation: &DiffOperation, metrics: Option<&crate::metrics::PairwiseMetrics>) -> ClassificationResult {
+        // Default implementation ignores metrics
+        self.classify_operation(operation)
+    }
+
     /// Classify an entire diff (default: aggregate individual operations)
     fn classify_diff(&self, diff: &DiffResult) -> ClassificationResult {
         let mut category_scores: std::collections::HashMap<String, f64> = 
@@ -91,6 +97,12 @@ pub trait ChangeClassifier: Send + Sync {
 
     /// Get the name of this classifier
     fn name(&self) -> &str;
+
+    /// Declare the metric dependencies this classifier requires
+    /// Returns a list of NodeDependencies that will be added to the execution plan
+    fn dependencies(&self) -> Vec<crate::execution::NodeDependencies> {
+        Vec::new()
+    }
 
     /// Clone into a box
     fn clone_box(&self) -> Box<dyn ChangeClassifier>;

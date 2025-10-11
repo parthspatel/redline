@@ -1,4 +1,4 @@
-//! Basic usage example of the text_diff library
+//! Basic usage example of the redline_core library
 
 use redline_core::normalizers::{Lowercase, WhitespaceNormalizer};
 use redline_core::tokenizers::WordTokenizer;

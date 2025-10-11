@@ -14,9 +14,9 @@
 //! ## Example
 //!
 //! ```rust
-//! use text_diff::{DiffEngine, DiffConfig, TextPipeline};
-//! use text_diff::normalizers::Lowercase;
-//! use text_diff::tokenizers::WordTokenizer;
+//! use redline_core::{DiffEngine, DiffConfig, DiffAlgorithm, TextPipeline};
+//! use redline_core::normalizers::Lowercase;
+//! use redline_core::tokenizers::WordTokenizer;
 //!
 //! let config = DiffConfig::default()
 //!     .with_algorithm(DiffAlgorithm::Myers)
@@ -40,6 +40,8 @@ pub mod diff;
 pub mod algorithms;
 pub mod analyzers;
 pub mod classifiers;
+pub mod metrics;
+pub mod execution;
 
 // Re-export main types
 pub use config::{DiffConfig, DiffAlgorithm};
@@ -63,7 +65,7 @@ pub use diff::{DiffResult, DiffOperation, EditType, ChangeCategory};
 /// # Example
 ///
 /// ```rust
-/// use text_diff::compute_diff;
+/// use redline_core::compute_diff;
 ///
 /// let result = compute_diff("Hello World", "Hello Rust", None);
 /// println!("Changes: {}", result.summary());

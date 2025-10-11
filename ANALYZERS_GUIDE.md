@@ -2,7 +2,7 @@
 
 ## Overview
 
-The text_diff library provides comprehensive analysis and classification capabilities for understanding text changes. This document explains the two-tier analyzer system and the classification framework.
+The redline_core library provides comprehensive analysis and classification capabilities for understanding text changes. This document explains the two-tier analyzer system and the classification framework.
 
 ## Architecture
 
@@ -53,8 +53,8 @@ Analyzes how similar the texts are in meaning.
 
 **Example:**
 ```rust
-use text_diff::analyzers::single::SemanticSimilarityAnalyzer;
-use text_diff::analyzers::SingleDiffAnalyzer;
+use redline_core::analyzers::single::SemanticSimilarityAnalyzer;
+use redline_core::analyzers::SingleDiffAnalyzer;
 
 let analyzer = SemanticSimilarityAnalyzer::new()
     .with_threshold(0.7);
@@ -79,7 +79,7 @@ Measures readability using multiple standard metrics.
 
 **Example:**
 ```rust
-use text_diff::analyzers::single::ReadabilityAnalyzer;
+use redline_core::analyzers::single::ReadabilityAnalyzer;
 
 let analyzer = ReadabilityAnalyzer::new();
 let result = analyzer.analyze(&diff);
@@ -105,7 +105,7 @@ Analyzes stylistic properties of the text.
 
 **Example:**
 ```rust
-use text_diff::analyzers::single::StylisticAnalyzer;
+use redline_core::analyzers::single::StylisticAnalyzer;
 
 let analyzer = StylisticAnalyzer::new();
 let result = analyzer.analyze(&diff);
@@ -139,7 +139,7 @@ Classifies the intent behind edits.
 
 **Example:**
 ```rust
-use text_diff::analyzers::single::EditIntentClassifier;
+use redline_core::analyzers::single::EditIntentClassifier;
 
 let analyzer = EditIntentClassifier::new();
 let result = analyzer.analyze(&diff);
@@ -166,8 +166,8 @@ Computes aggregate statistics across diffs.
 
 **Example:**
 ```rust
-use text_diff::analyzers::multi::AggregateStatisticsAnalyzer;
-use text_diff::analyzers::MultiDiffAnalyzer;
+use redline_core::analyzers::multi::AggregateStatisticsAnalyzer;
+use redline_core::analyzers::MultiDiffAnalyzer;
 
 let analyzer = AggregateStatisticsAnalyzer::new();
 let diffs: Vec<&DiffResult> = diff_collection.iter().collect();
@@ -186,7 +186,7 @@ Detects common patterns across multiple edits.
 
 **Configuration:**
 ```rust
-use text_diff::analyzers::multi::PatternDetectionAnalyzer;
+use redline_core::analyzers::multi::PatternDetectionAnalyzer;
 
 let analyzer = PatternDetectionAnalyzer::new()
     .with_min_frequency(0.3); // Report patterns occurring in >30% of diffs
@@ -210,7 +210,7 @@ Groups diffs by editing behavior using k-means clustering.
 
 **Example:**
 ```rust
-use text_diff::analyzers::multi::BehaviorClusteringAnalyzer;
+use redline_core::analyzers::multi::BehaviorClusteringAnalyzer;
 
 let analyzer = BehaviorClusteringAnalyzer::new(3); // 3 clusters
 let result = analyzer.analyze(&diffs);
@@ -234,7 +234,7 @@ Analyzes trends over time (requires chronological order).
 
 **Example:**
 ```rust
-use text_diff::analyzers::multi::TemporalTrendAnalyzer;
+use redline_core::analyzers::multi::TemporalTrendAnalyzer;
 
 // Diffs should be in chronological order
 let analyzer = TemporalTrendAnalyzer::new();
@@ -250,7 +250,7 @@ Filter operations from diffs for targeted analysis.
 Selects all operations.
 
 ```rust
-use text_diff::analyzers::selectors::WholeDocumentSelector;
+use redline_core::analyzers::selectors::WholeDocumentSelector;
 
 let selector = WholeDocumentSelector;
 let ops = selector.select(&diff);
@@ -261,7 +261,7 @@ let ops = selector.select(&diff);
 Selects operations within specific paragraphs.
 
 ```rust
-use text_diff::analyzers::selectors::ParagraphSelector;
+use redline_core::analyzers::selectors::ParagraphSelector;
 
 // Select second paragraph
 let selector = ParagraphSelector::single(1);
@@ -277,7 +277,7 @@ let ops = selector.select(&diff);
 Selects operations within sections (by headers).
 
 ```rust
-use text_diff::analyzers::selectors::SectionSelector;
+use redline_core::analyzers::selectors::SectionSelector;
 
 let selector = SectionSelector::by_headers(vec!["Introduction", "Methods"]);
 let ops = selector.select(&diff);
@@ -288,7 +288,7 @@ let ops = selector.select(&diff);
 Selects by edit type.
 
 ```rust
-use text_diff::analyzers::selectors::EditTypeSelector;
+use redline_core::analyzers::selectors::EditTypeSelector;
 
 let selector = EditTypeSelector::insertions();
 // or: deletions(), modifications(), changes()
@@ -301,7 +301,7 @@ let ops = selector.select(&diff);
 Combines multiple selectors with AND/OR logic.
 
 ```rust
-use text_diff::analyzers::selectors::{CompositeSelector, EditTypeSelector, ParagraphSelector};
+use redline_core::analyzers::selectors::{CompositeSelector, EditTypeSelector, ParagraphSelector};
 
 // Select insertions in paragraph 2
 let selector = CompositeSelector::and(vec![
@@ -327,7 +327,7 @@ Comprehensive rule-based classification.
 
 **Example:**
 ```rust
-use text_diff::classifiers::{RuleBasedClassifier, ChangeClassifier};
+use redline_core::classifiers::{RuleBasedClassifier, ChangeClassifier};
 
 let classifier = RuleBasedClassifier::new();
 
@@ -345,13 +345,13 @@ ML-based classifier that can be trained on labeled data.
 
 **Training:**
 ```rust
-use text_diff::classifiers::ml::{
+use redline_core::classifiers::ml::{
     NaiveBayesClassifier, 
     StandardFeatureExtractor,
     TrainingSample,
     create_training_samples,
 };
-use text_diff::ChangeCategory;
+use redline_core::ChangeCategory;
 
 let extractor = StandardFeatureExtractor::new();
 let mut classifier = NaiveBayesClassifier::new();
@@ -375,7 +375,7 @@ let classification = classifier.classify_operation(&new_op);
 Combines multiple classifiers.
 
 ```rust
-use text_diff::classifiers::{EnsembleClassifier, RuleBasedClassifier};
+use redline_core::classifiers::{EnsembleClassifier, RuleBasedClassifier};
 
 let ensemble = EnsembleClassifier::new(vec![
     Box::new(RuleBasedClassifier::new()),
@@ -387,10 +387,10 @@ let ensemble = EnsembleClassifier::new(vec![
 ## Complete Workflow Example
 
 ```rust
-use text_diff::{DiffEngine, AnalysisReport};
-use text_diff::analyzers::single::*;
-use text_diff::analyzers::multi::*;
-use text_diff::analyzers::SingleDiffAnalyzer;
+use redline_core::{DiffEngine, AnalysisReport};
+use redline_core::analyzers::single::*;
+use redline_core::analyzers::multi::*;
+use redline_core::analyzers::SingleDiffAnalyzer;
 
 // 1. Create diffs
 let engine = DiffEngine::default();
@@ -485,8 +485,8 @@ let patterns = pattern_analyzer.analyze(&all_diffs);
 ### Custom Single Analyzer
 
 ```rust
-use text_diff::analyzers::{SingleDiffAnalyzer, AnalysisResult};
-use text_diff::diff::DiffResult;
+use redline_core::analyzers::{SingleDiffAnalyzer, AnalysisResult};
+use redline_core::diff::DiffResult;
 
 #[derive(Clone)]
 struct MyAnalyzer;
@@ -508,8 +508,8 @@ impl SingleDiffAnalyzer for MyAnalyzer {
 ### Custom Classifier
 
 ```rust
-use text_diff::classifiers::{ChangeClassifier, ClassificationResult};
-use text_diff::diff::DiffOperation;
+use redline_core::classifiers::{ChangeClassifier, ClassificationResult};
+use redline_core::diff::DiffOperation;
 
 #[derive(Clone)]
 struct MyClassifier;

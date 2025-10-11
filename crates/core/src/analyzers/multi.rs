@@ -592,15 +592,16 @@ mod tests {
     #[test]
     fn test_pattern_detection() {
         let engine = DiffEngine::default();
-        let diff1 = engine.diff("a", "abc");  // Expansion
-        let diff2 = engine.diff("x", "xyz");  // Expansion
-        let diff3 = engine.diff("m", "mno");  // Expansion
-        
+        // Use examples that clearly show expansion with word tokenization
+        let diff1 = engine.diff("hello", "hello world");  // Expansion (adds word)
+        let diff2 = engine.diff("foo", "foo bar");        // Expansion (adds word)
+        let diff3 = engine.diff("test", "test case");     // Expansion (adds word)
+
         let diffs = vec![&diff1, &diff2, &diff3];
-        
+
         let analyzer = PatternDetectionAnalyzer::new();
         let result = analyzer.analyze(&diffs);
-        
+
         // Should detect expansion pattern
         assert!(result.insights.iter().any(|i| i.contains("expansion")));
     }
