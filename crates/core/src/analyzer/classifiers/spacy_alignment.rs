@@ -42,11 +42,12 @@ impl SpacyAlignmentAnalyzer {
     fn compute_alignment_stats(
         &self,
         alignments: &[token_alignment::TokenAlignment],
-    ) -> (usize, usize, usize, usize) {
+    ) -> (usize, usize, usize, usize, usize) {
         let mut matches = 0;
         let mut insertions = 0;
         let mut deletions = 0;
         let mut replacements = 0;
+        let mut reorderings = 0;
 
         for alignment in alignments {
             match alignment {
@@ -54,10 +55,11 @@ impl SpacyAlignmentAnalyzer {
                 token_alignment::TokenAlignment::Insertion { .. } => insertions += 1,
                 token_alignment::TokenAlignment::Deletion { .. } => deletions += 1,
                 token_alignment::TokenAlignment::Replacement { .. } => replacements += 1,
+                token_alignment::TokenAlignment::Reorder { .. } => reorderings += 1,
             }
         }
 
-        (matches, insertions, deletions, replacements)
+        (matches, insertions, deletions, replacements, reorderings)
     }
 }
 
@@ -85,7 +87,7 @@ impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
                 let alignments = token_alignment::align_tokens(&orig_tokens, &mod_tokens);
 
                 // Compute statistics
-                let (matches, insertions, deletions, replacements) =
+                let (matches, insertions, deletions, replacements, reorderings) =
                     self.compute_alignment_stats(&alignments);
                 let total = alignments.len();
                 let alignment_ratio = if total > 0 {
@@ -100,6 +102,7 @@ impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
                 result.add_metric("insertions", insertions as f64);
                 result.add_metric("deletions", deletions as f64);
                 result.add_metric("replacements", replacements as f64);
+                result.add_metric("reorderings", reorderings as f64);
                 result.add_metric("alignment_ratio", alignment_ratio);
 
                 // Generate insights
@@ -107,8 +110,15 @@ impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
                     result.add_insight("All tokens aligned perfectly");
                 } else {
                     result.add_insight(format!(
-                        "Token alignment: {} matches, {} insertions, {} deletions, {} replacements",
-                        matches, insertions, deletions, replacements
+                        "Token alignment: {} matches, {} insertions, {} deletions, {} replacements, {} reorderings",
+                        matches, insertions, deletions, replacements, reorderings
+                    ));
+                }
+
+                if reorderings > 0 {
+                    result.add_insight(format!(
+                        "⚠️ Word order changed: {} token(s) reordered",
+                        reorderings
                     ));
                 }
 

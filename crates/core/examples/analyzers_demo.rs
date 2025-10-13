@@ -19,6 +19,18 @@ use redline_core::analyzer::{AnalysisReport, MultiDiffAnalyzer, SingleDiffAnalyz
 // Import classifiers
 use redline_core::analyzer::classifiers::{ChangeClassifier, RuleBasedClassifier};
 
+// SpaCy analyzers (optional, enabled with 'spacy' feature)
+#[cfg(feature = "spacy")]
+use redline_core::analyzer::classifiers::spacy_alignment::SpacyAlignmentAnalyzer;
+#[cfg(feature = "spacy")]
+use redline_core::analyzer::classifiers::spacy_dependency::SpacyDependencyAnalyzer;
+#[cfg(feature = "spacy")]
+use redline_core::analyzer::classifiers::spacy_grammar::SpacyGrammarAnalyzer;
+#[cfg(feature = "spacy")]
+use redline_core::analyzer::classifiers::spacy_pos::SpacyPOSAnalyzer;
+#[cfg(feature = "spacy")]
+use redline_core::analyzer::classifiers::spacy_structural::SpacyStructuralAnalyzer;
+
 const LINE: &str = "----------------------------------------";
 
 fn main() {
@@ -38,6 +50,10 @@ fn main() {
 
     // Example 5: Complete workflow for user edit analysis
     example_user_edit_analysis();
+
+    // Example 6: SpaCy syntactic analysis (if enabled)
+    #[cfg(feature = "spacy")]
+    example_spacy_analysis();
 }
 
 fn example_single_diff_analysis() {
@@ -228,14 +244,14 @@ fn example_user_edit_analysis() {
 
     // Simulate AI-generated text that a user edited
     let generated = r#"
-The quick brown fox jumps over the lazy dog. This sentence contains 
-every letter of the alphabet. It is commonly used for testing purposes. 
+The quick brown fox jumps over the lazy dog. This sentence contains
+every letter of the alphabet. It is commonly used for testing purposes.
 The fox is very agile and quick.
 "#;
 
     let edited = r#"
-The swift brown fox leaps over the sleepy dog. This sentence demonstrates 
-various letters of the alphabet and serves as an excellent test case. 
+The swift brown fox leaps over the sleepy dog. This sentence demonstrates
+various letters of the alphabet and serves as an excellent test case.
 The fox displays remarkable agility and speed.
 "#;
 
@@ -344,4 +360,99 @@ The fox displays remarkable agility and speed.
 
     println!("\n{}", LINE);
     println!("Analysis completed! Use these insights to improve generation.\n");
+}
+
+#[cfg(feature = "spacy")]
+fn example_spacy_analysis() {
+    println!("\nExample 6: SpaCy Syntactic Analysis");
+    println!("{}", LINE);
+
+    let engine = DiffEngine::default();
+
+    // Test 1: Grammar fix detection
+    println!("\n📝 Test 1: Grammar Fix Detection");
+    let original1 = "She don't like apples";
+    let corrected1 = "She doesn't like apples";
+    let diff1 = engine.diff(original1, corrected1);
+
+    println!("Original:  '{}'", original1);
+    println!("Corrected: '{}'", corrected1);
+
+    let grammar_analyzer = SpacyGrammarAnalyzer::new("en_core_web_sm");
+    let grammar_result = grammar_analyzer.analyze(&diff1);
+
+    println!("\nGrammar Analysis:");
+    if let Some(fixes) = grammar_result.metrics.get("grammar_fixes") {
+        println!("  ✓ Grammar fixes detected: {}", fixes);
+    }
+    for insight in &grammar_result.insights {
+        println!("  • {}", insight);
+    }
+
+    // Test 2: Word order detection
+    println!("\n📝 Test 2: Word Order Changes");
+    let original2 = "The big red car";
+    let modified2 = "The red big car";
+    let diff2 = engine.diff(original2, modified2);
+
+    println!("Original: '{}'", original2);
+    println!("Modified: '{}'", modified2);
+
+    let alignment_analyzer = SpacyAlignmentAnalyzer::new("en_core_web_sm");
+    let alignment_result = alignment_analyzer.analyze(&diff2);
+
+    println!("\nAlignment Analysis:");
+    if let Some(reorderings) = alignment_result.metrics.get("reorderings") {
+        println!("  ⚠️  Reorderings detected: {}", reorderings);
+    }
+    if let Some(ratio) = alignment_result.metrics.get("alignment_ratio") {
+        println!("  • Alignment ratio: {:.1}%", ratio * 100.0);
+    }
+
+    let structural_analyzer = SpacyStructuralAnalyzer::new("en_core_web_sm");
+    let structural_result = structural_analyzer.analyze(&diff2);
+
+    if let Some(similarity) = structural_result.metrics.get("structural_similarity") {
+        println!("  • Structural similarity: {:.1}%", similarity * 100.0);
+    }
+
+    // Test 3: Comprehensive analysis
+    println!("\n📝 Test 3: Comprehensive Syntactic Analysis");
+    let original3 = "I seen the movie yesterday and it was good";
+    let corrected3 = "I saw the movie yesterday and it was great";
+    let diff3 = engine.diff(original3, corrected3);
+
+    println!("Original:  '{}'", original3);
+    println!("Corrected: '{}'", corrected3);
+
+    let analyzers: Vec<Box<dyn SingleDiffAnalyzer>> = vec![
+        Box::new(SpacyAlignmentAnalyzer::new("en_core_web_sm")),
+        Box::new(SpacyPOSAnalyzer::new("en_core_web_sm")),
+        Box::new(SpacyDependencyAnalyzer::new("en_core_web_sm")),
+        Box::new(SpacyGrammarAnalyzer::new("en_core_web_sm")),
+        Box::new(SpacyStructuralAnalyzer::new("en_core_web_sm")),
+    ];
+
+    println!("\nRunning all SpaCy analyzers:");
+    for analyzer in &analyzers {
+        let result = analyzer.analyze(&diff3);
+
+        // Print key metrics
+        println!("\n  {} - Key Metrics:", analyzer.name());
+        for (metric, value) in result.metrics.iter().take(3) {
+            println!("    • {}: {:.2}", metric, value);
+        }
+
+        // Print first insight if any
+        if let Some(insight) = result.insights.first() {
+            println!("    💡 {}", insight);
+        }
+    }
+
+    println!("\n{}", LINE);
+    println!("SpaCy analysis demonstrates:");
+    println!("  ✓ Grammar error detection (verb forms, agreement)");
+    println!("  ✓ Word order change detection");
+    println!("  ✓ Structural similarity analysis");
+    println!("  ✓ Fine-grained syntactic metrics\n");
 }
