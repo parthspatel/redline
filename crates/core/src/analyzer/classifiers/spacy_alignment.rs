@@ -10,8 +10,6 @@ use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
 #[cfg(feature = "spacy")]
-use crate::analyzer::classifiers::SyntacticToken;
-#[cfg(feature = "spacy")]
 use crate::token_alignment;
 
 #[cfg(feature = "spacy")]

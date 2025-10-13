@@ -43,7 +43,7 @@ impl SpacyStructuralAnalyzer {
     /// Calculate structural similarity based on dependency trees
     ///
     /// This measures how similar the syntactic structures are by comparing
-    /// both POS tags and dependency relations for each token position.
+    /// both POS tags and dependency relations using proper token alignment.
     ///
     /// Returns a value between 0.0 (completely different) and 1.0 (identical)
     pub fn calculate_structural_similarity(
@@ -51,41 +51,37 @@ impl SpacyStructuralAnalyzer {
         orig: &[SyntacticToken],
         modified: &[SyntacticToken],
     ) -> f64 {
-        if orig.is_empty() && modified.is_empty() {
-            return 1.0;
-        }
-
-        if orig.is_empty() || modified.is_empty() {
-            return 0.0;
-        }
-
-        let min_len = orig.len().min(modified.len());
-        let max_len = orig.len().max(modified.len());
-
-        let mut matching_structures = 0;
-
-        for i in 0..min_len {
-            // Check if both POS and dependency match
-            if orig[i].pos == modified[i].pos && orig[i].dep == modified[i].dep {
-                matching_structures += 1;
-            }
-        }
-
-        matching_structures as f64 / max_len as f64
+        let alignments = token_alignment::align_tokens(orig, modified);
+        token_alignment::calculate_structural_similarity_aligned(orig, modified, &alignments)
     }
 
     /// Calculate the ratio of tokens with matching POS and dependency
+    ///
+    /// Uses proper token alignment to match tokens by content, not position
     pub fn pos_dep_match_ratio(&self, orig: &[SyntacticToken], modified: &[SyntacticToken]) -> f64 {
         if orig.is_empty() || modified.is_empty() {
             return 0.0;
         }
 
-        let min_len = orig.len().min(modified.len());
-        let matches = (0..min_len)
-            .filter(|&i| orig[i].pos == modified[i].pos && orig[i].dep == modified[i].dep)
-            .count();
+        let alignments = token_alignment::align_tokens(orig, modified);
+        let mut matches = 0;
 
-        matches as f64 / min_len as f64
+        for alignment in &alignments {
+            if let token_alignment::TokenAlignment::Match { orig_idx, mod_idx } = alignment {
+                if orig[*orig_idx].pos == modified[*mod_idx].pos
+                    && orig[*orig_idx].dep == modified[*mod_idx].dep
+                {
+                    matches += 1;
+                }
+            }
+        }
+
+        let total = alignments.len();
+        if total > 0 {
+            matches as f64 / total as f64
+        } else {
+            1.0
+        }
     }
 
     /// Detect if sentence structure was significantly changed
