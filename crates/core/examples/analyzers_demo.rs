@@ -10,7 +10,7 @@ use redline_core::analyzer::multi::{
 };
 use redline_core::analyzer::selectors::{DiffSelector, EditTypeSelector, ParagraphSelector};
 // Import analyzers
-use redline_core::analyzer::single::{
+use redline_core::analyzer::classifiers::{
     CategoryDistributionAnalyzer, EditIntentClassifier, ReadabilityAnalyzer,
     SemanticSimilarityAnalyzer, StylisticAnalyzer,
 };

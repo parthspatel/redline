@@ -4,20 +4,24 @@
     "rustup@latest",
     "libiconv@latest",
     "uv@latest",
+    "python@3.10",
+    "./flakes/libtorch"
   ],
+  "env": {
+    "LIBTORCH_USE_PYTORCH": "1",
+    "PYO3_PYTHON": "$PWD/.venv/bin/python",
+    "PYTHON_HOME": "$PWD/.venv"
+  },
   "shell": {
     "init_hook": [
-//      "projectDir=$(dirname $(readlink -f \"$0\"))",
-//      "rustupHomeDir=\"$projectDir\"/.rustup",
-//      "mkdir -p $rustupHomeDir",
-//      "export RUSTUP_HOME=$rustupHomeDir",
-//      "export LIBRARY_PATH=$LIBRARY_PATH:\"$projectDir/nix/profile/default/lib\"",
+      ". $VENV_DIR/bin/activate",
+      "pip install -r requirements.txt",
       "rustup default stable",
       "cargo fetch"
     ],
     "scripts": {
-      "test":       "cargo test -- --show-output",
-      "start":      "cargo run",
+      "test": "cargo test -- --show-output",
+      "start": "cargo run",
       "build-docs": "cargo doc"
     }
   }

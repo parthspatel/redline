@@ -7,7 +7,6 @@
 pub mod classifiers;
 pub mod multi;
 pub mod selectors;
-pub mod single;
 
 use crate::diff::DiffResult;
 use std::collections::HashMap;

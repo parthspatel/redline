@@ -124,7 +124,7 @@ In addition to the core diff library, I've now implemented a comprehensive **ana
 ### Basic Usage
 
 ```rust
-use redline_core::analyzer::single::SemanticSimilarityAnalyzer;
+use redline_core::analyzer::classifiers::SemanticSimilarityAnalyzer;
 use redline_core::analyzer::SingleDiffAnalyzer;
 
 let diff = engine.diff("original", "edited");
@@ -387,7 +387,7 @@ let clusters = BehaviorClusteringAnalyzer::new(3).analyze(&all_diffs);
 
 2. **Integrate into your project:**
    ```rust
-   use redline_core::analyzer::single::*;
+   use redline_core::analyzer::classifiers::*;
    use redline_core::classifiers::*;
    ```
 

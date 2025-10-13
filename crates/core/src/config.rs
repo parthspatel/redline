@@ -331,8 +331,7 @@ mod tests {
 
     #[test]
     fn test_feature_analyzers_share_metrics() {
-        use crate::analyzer::classifiers::naive_bayes::NaiveBayesClassifier;
-        use crate::analyzer::single::{CharSimilarityAnalyzer, WordOverlapAnalyzer};
+        use crate::analyzer::classifiers::{NaiveBayesClassifier, CharSimilarityAnalyzer, WordOverlapAnalyzer};
         use crate::execution::MetricType;
 
         // Add feature analyzers AND a classifier - they should share the same cached metrics

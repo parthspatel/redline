@@ -53,7 +53,7 @@ Analyzes how similar the texts are in meaning.
 
 **Example:**
 ```rust
-use redline_core::analyzer::single::SemanticSimilarityAnalyzer;
+use redline_core::analyzer::classifiers::SemanticSimilarityAnalyzer;
 use redline_core::analyzer::SingleDiffAnalyzer;
 
 let analyzer = SemanticSimilarityAnalyzer::new()
@@ -79,7 +79,7 @@ Measures readability using multiple standard metrics.
 
 **Example:**
 ```rust
-use redline_core::analyzer::single::ReadabilityAnalyzer;
+use redline_core::analyzer::classifiers::ReadabilityAnalyzer;
 
 let analyzer = ReadabilityAnalyzer::new();
 let result = analyzer.analyze(&diff);
@@ -105,7 +105,7 @@ Analyzes stylistic properties of the text.
 
 **Example:**
 ```rust
-use redline_core::analyzer::single::StylisticAnalyzer;
+use redline_core::analyzer::classifiers::StylisticAnalyzer;
 
 let analyzer = StylisticAnalyzer::new();
 let result = analyzer.analyze(&diff);
@@ -139,7 +139,7 @@ Classifies the intent behind edits.
 
 **Example:**
 ```rust
-use redline_core::analyzer::single::EditIntentClassifier;
+use redline_core::analyzer::classifiers::EditIntentClassifier;
 
 let analyzer = EditIntentClassifier::new();
 let result = analyzer.analyze(&diff);
@@ -388,7 +388,7 @@ let ensemble = EnsembleClassifier::new(vec![
 
 ```rust
 use redline_core::{DiffEngine, AnalysisReport};
-use redline_core::analyzer::single::*;
+use redline_core::analyzer::classifiers::*;
 use redline_core::analyzer::multi::*;
 use redline_core::analyzer::SingleDiffAnalyzer;
 

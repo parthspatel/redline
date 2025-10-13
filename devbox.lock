@@ -41,6 +41,63 @@
         }
       }
     },
+    "python@3.10": {
+      "last_modified": "2025-09-18T16:33:27Z",
+      "plugin_version": "0.0.4",
+      "resolved": "github:NixOS/nixpkgs/f4b140d5b253f5e2a1ff4e5506edbf8267724bde#python310",
+      "source": "devbox-search",
+      "version": "3.10.18",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/mxxsvvd2i2hlgw5m3snjpv8vhs1g8flh-python3-3.10.18",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/mxxsvvd2i2hlgw5m3snjpv8vhs1g8flh-python3-3.10.18"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/jkvqgw0mnyvd547vzysa7vkz92216z66-python3-3.10.18",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/2k4vh67paqyizj1zpsz0l01pb6j3n7ha-python3-3.10.18-debug"
+            }
+          ],
+          "store_path": "/nix/store/jkvqgw0mnyvd547vzysa7vkz92216z66-python3-3.10.18"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/71yhr24j02fv13d7rzicf46sxicidjs4-python3-3.10.18",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/71yhr24j02fv13d7rzicf46sxicidjs4-python3-3.10.18"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/jipwhn43fcj05b8nmla34py0pk76wbkv-python3-3.10.18",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/x8f0h2ivbgrjlq4950m790ayh77k9gv7-python3-3.10.18-debug"
+            }
+          ],
+          "store_path": "/nix/store/jipwhn43fcj05b8nmla34py0pk76wbkv-python3-3.10.18"
+        }
+      }
+    },
     "rustup@latest": {
       "last_modified": "2025-09-18T16:33:27Z",
       "plugin_version": "0.0.1",

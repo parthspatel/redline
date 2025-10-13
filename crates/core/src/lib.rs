@@ -38,9 +38,14 @@ pub mod engine;
 pub mod execution;
 pub mod mapping;
 pub mod metrics;
+pub mod nlp;
 pub mod normalizers;
 pub mod pipeline;
 pub mod tokenizers;
+
+// Token alignment utilities (for SpaCy analyzers)
+#[cfg(feature = "spacy")]
+pub mod token_alignment;
 
 // Re-export main types
 pub use config::{DiffAlgorithm, DiffConfig};

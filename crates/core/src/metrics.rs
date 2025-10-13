@@ -5,6 +5,10 @@
 
 use std::collections::HashSet;
 
+// Import SyntacticToken for caching
+#[cfg(feature = "spacy")]
+use crate::analyzer::classifiers::SyntacticToken;
+
 /// Metrics computed for a single text
 #[derive(Debug, Clone)]
 pub struct TextMetrics {
@@ -29,6 +33,10 @@ pub struct TextMetrics {
 
     // Raw text (for comparison operations)
     text: String,
+
+    // Cached syntactic analysis (optional, computed on demand)
+    #[cfg(feature = "spacy")]
+    pub syntactic_tokens: Option<Vec<SyntacticToken>>,
 }
 
 impl TextMetrics {
@@ -98,6 +106,8 @@ impl TextMetrics {
             punctuation_count,
             flesch_reading_ease,
             flesch_kincaid_grade,
+            #[cfg(feature = "spacy")]
+            syntactic_tokens: None,
             avg_word_length,
             avg_sentence_length,
             stopword_ratio,
@@ -110,6 +120,24 @@ impl TextMetrics {
     /// Get the raw text
     pub fn text(&self) -> &str {
         &self.text
+    }
+
+    /// Get cached syntactic tokens if available
+    #[cfg(feature = "spacy")]
+    pub fn get_syntactic_tokens(&self) -> Option<&Vec<SyntacticToken>> {
+        self.syntactic_tokens.as_ref()
+    }
+
+    /// Cache syntactic tokens for this text
+    #[cfg(feature = "spacy")]
+    pub fn set_syntactic_tokens(&mut self, tokens: Vec<SyntacticToken>) {
+        self.syntactic_tokens = Some(tokens);
+    }
+
+    /// Check if syntactic tokens are cached
+    #[cfg(feature = "spacy")]
+    pub fn has_syntactic_tokens(&self) -> bool {
+        self.syntactic_tokens.is_some()
     }
 }
 
@@ -130,6 +158,10 @@ pub struct PairwiseMetrics {
     pub word_count_diff: f64,
     pub whitespace_ratio_diff: f64,
     pub negation_changed: bool,
+
+    // Token alignment (cached)
+    #[cfg(feature = "spacy")]
+    pub token_alignment: Option<Vec<crate::token_alignment::TokenAlignment>>,
 }
 
 impl PairwiseMetrics {
@@ -185,6 +217,8 @@ impl PairwiseMetrics {
             word_count_diff,
             whitespace_ratio_diff,
             negation_changed,
+            #[cfg(feature = "spacy")]
+            token_alignment: None, // Computed lazily by SpacyAlignmentAnalyzer
         }
     }
 }

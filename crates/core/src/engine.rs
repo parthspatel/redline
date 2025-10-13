@@ -1,9 +1,9 @@
 //! Main diff engine that orchestrates the entire diff process
 
+use crate::algorithm::DiffAlgorithm as DiffAlgoTrait;
 use crate::algorithm::histogram::HistogramAlgorithm;
 use crate::algorithm::myers::MyersAlgorithm;
 use crate::algorithm::patience::PatienceAlgorithm;
-use crate::algorithm::DiffAlgorithm as DiffAlgoTrait;
 use crate::config::{DiffAlgorithm, DiffConfig};
 use crate::diff::{ChangeCategory, DiffResult, EditType};
 use crate::normalizers::Lowercase;
@@ -93,6 +93,8 @@ impl DiffEngine {
             word_count_diff: 0.0,
             whitespace_ratio_diff: 0.0,
             negation_changed: false,
+            #[cfg(feature = "spacy")]
+            token_alignment: None,
         };
 
         // Execute in dependency order
