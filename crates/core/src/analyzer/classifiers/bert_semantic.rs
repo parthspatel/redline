@@ -5,12 +5,12 @@
 
 #[cfg(feature = "bert")]
 use rust_bert::pipelines::sentence_embeddings::{
-    SentenceEmbeddingsBuilder, SentenceEmbeddingsModel, SentenceEmbeddingsModelType,
+    SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType,
 };
-
-use crate::analyzers::{AnalysisResult, SingleDiffAnalyzer};
-use crate::diff::DiffResult;
 use std::sync::Arc;
+
+use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
+use crate::diff::DiffResult;
 
 /// BERT-based semantic similarity analyzer with adaptive thresholds
 #[derive(Clone)]
@@ -18,19 +18,19 @@ pub struct BertSemanticAnalyzer {
     /// The BERT model to use
     #[cfg(feature = "bert")]
     model_type: Arc<SentenceEmbeddingsModelType>,
-    
+
     /// Learned threshold for similarity classification
     threshold: Option<f64>,
-    
+
     /// Historical similarity scores for threshold learning
     similarity_history: Vec<f64>,
-    
+
     /// Maximum history size for threshold learning
     max_history_size: usize,
-    
+
     /// Whether to enable automatic threshold learning
     auto_threshold: bool,
-    
+
     /// Confidence percentile for threshold (e.g., 0.5 = median)
     threshold_percentile: f64,
 }
@@ -40,7 +40,7 @@ impl BertSemanticAnalyzer {
     #[cfg(feature = "bert")]
     pub fn new() -> Self {
         Self {
-            model_type:Arc::new(SentenceEmbeddingsModelType::AllMiniLmL6V2),
+            model_type: Arc::new(SentenceEmbeddingsModelType::AllMiniLmL6V2),
             threshold: None,
             similarity_history: Vec::new(),
             max_history_size: 1000,
@@ -141,15 +141,11 @@ impl BertSemanticAnalyzer {
 
     /// Fallback word-level similarity
     fn word_jaccard_similarity(&self, text1: &str, text2: &str) -> f64 {
-        let words1: std::collections::HashSet<_> = text1
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
+        let words1: std::collections::HashSet<_> =
+            text1.split_whitespace().map(|w| w.to_lowercase()).collect();
 
-        let words2: std::collections::HashSet<_> = text2
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
+        let words2: std::collections::HashSet<_> =
+            text2.split_whitespace().map(|w| w.to_lowercase()).collect();
 
         if words1.is_empty() && words2.is_empty() {
             return 1.0;
@@ -237,15 +233,20 @@ impl BertSemanticAnalyzer {
     /// Assumes bimodal distribution: similar (high scores) vs dissimilar (low scores)
     fn compute_gmm_threshold(&self) -> Option<f64> {
         // Simple 2-component GMM approximation
-        let mean = self.similarity_history.iter().sum::<f64>() / self.similarity_history.len() as f64;
-        
+        let mean =
+            self.similarity_history.iter().sum::<f64>() / self.similarity_history.len() as f64;
+
         // Split into two groups around mean
-        let low_scores: Vec<f64> = self.similarity_history.iter()
+        let low_scores: Vec<f64> = self
+            .similarity_history
+            .iter()
             .filter(|&&x| x < mean)
             .copied()
             .collect();
-        
-        let high_scores: Vec<f64> = self.similarity_history.iter()
+
+        let high_scores: Vec<f64> = self
+            .similarity_history
+            .iter()
             .filter(|&&x| x >= mean)
             .copied()
             .collect();
@@ -259,14 +260,18 @@ impl BertSemanticAnalyzer {
         let high_mean = high_scores.iter().sum::<f64>() / high_scores.len() as f64;
 
         // Compute standard deviations
-        let low_var = low_scores.iter()
+        let low_var = low_scores
+            .iter()
             .map(|x| (x - low_mean).powi(2))
-            .sum::<f64>() / low_scores.len() as f64;
+            .sum::<f64>()
+            / low_scores.len() as f64;
         let low_std = low_var.sqrt();
 
-        let high_var = high_scores.iter()
+        let high_var = high_scores
+            .iter()
             .map(|x| (x - high_mean).powi(2))
-            .sum::<f64>() / high_scores.len() as f64;
+            .sum::<f64>()
+            / high_scores.len() as f64;
         let high_std = high_var.sqrt();
 
         // Threshold is where the two distributions are most likely to intersect
@@ -276,8 +281,8 @@ impl BertSemanticAnalyzer {
         let weight_high = high_scores.len() as f64 / self.similarity_history.len() as f64;
 
         // Weighted midpoint, adjusted by standard deviations
-        let threshold = (low_mean * weight_high + high_mean * weight_low) + 
-                       (high_std - low_std) * 0.1; // Small adjustment based on spread
+        let threshold =
+            (low_mean * weight_high + high_mean * weight_low) + (high_std - low_std) * 0.1; // Small adjustment based on spread
 
         Some(threshold.clamp(0.0, 1.0))
     }
@@ -334,9 +339,7 @@ impl BertSemanticAnalyzer {
         let variance = if sorted.is_empty() {
             0.0
         } else {
-            sorted.iter()
-                .map(|x| (x - mean).powi(2))
-                .sum::<f64>() / sorted.len() as f64
+            sorted.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / sorted.len() as f64
         };
 
         let std_dev = variance.sqrt();
@@ -370,7 +373,8 @@ impl BertSemanticAnalyzer {
     pub fn import_history(&mut self, history: Vec<f64>) {
         self.similarity_history = history;
         if self.similarity_history.len() > self.max_history_size {
-            self.similarity_history = self.similarity_history
+            self.similarity_history = self
+                .similarity_history
                 .iter()
                 .rev()
                 .take(self.max_history_size)
@@ -378,7 +382,7 @@ impl BertSemanticAnalyzer {
                 .copied()
                 .collect();
         }
-        
+
         if self.auto_threshold {
             self.learn_threshold();
         }
@@ -396,14 +400,15 @@ impl SingleDiffAnalyzer for BertSemanticAnalyzer {
         let mut result = AnalysisResult::new(self.name());
 
         // Compute BERT-based similarity
-        let similarity = match self.compute_bert_similarity(&diff.original_text, &diff.modified_text) {
-            Ok(sim) => sim,
-            Err(e) => {
-                result.add_insight(format!("Error computing similarity: {}", e));
-                // Fall back to basic similarity from diff
-                diff.semantic_similarity
-            }
-        };
+        let similarity =
+            match self.compute_bert_similarity(&diff.original_text, &diff.modified_text) {
+                Ok(sim) => sim,
+                Err(e) => {
+                    result.add_insight(format!("Error computing similarity: {}", e));
+                    // Fall back to basic similarity from diff
+                    diff.semantic_similarity
+                }
+            };
 
         // Add to learning history (mutable operation needs special handling)
         // Note: In real usage, you'd need to make the analyzer mutable or use interior mutability
@@ -434,14 +439,17 @@ impl SingleDiffAnalyzer for BertSemanticAnalyzer {
         // Generate insights
         #[cfg(feature = "bert")]
         result.add_insight("Using BERT embeddings for semantic similarity".to_string());
-        
+
         #[cfg(not(feature = "bert"))]
-        result.add_insight("Using fallback similarity (enable 'bert' feature for BERT embeddings)".to_string());
+        result.add_insight(
+            "Using fallback similarity (enable 'bert' feature for BERT embeddings)".to_string(),
+        );
 
         if similarity >= threshold {
             result.add_insight(format!(
                 "High semantic similarity ({:.1}% ≥ {:.1}% threshold). Meaning preserved.",
-                similarity * 100.0, threshold * 100.0
+                similarity * 100.0,
+                threshold * 100.0
             ));
         } else {
             result.add_insight(format!(
@@ -452,7 +460,10 @@ impl SingleDiffAnalyzer for BertSemanticAnalyzer {
 
         // Add learning stats if available
         if self.similarity_history.len() >= 10 {
-            result.add_metadata("learning_samples", self.similarity_history.len().to_string());
+            result.add_metadata(
+                "learning_samples",
+                self.similarity_history.len().to_string(),
+            );
             result.add_insight(format!(
                 "Threshold learned from {} samples",
                 self.similarity_history.len()
@@ -511,7 +522,7 @@ mod tests {
         let analyzer = BertSemanticAnalyzer::new();
         let engine = DiffEngine::default();
         let diff = engine.diff("hello world", "hello rust");
-        
+
         let result = analyzer.analyze(&diff);
         assert!(result.metrics.contains_key("bert_semantic_similarity"));
     }
@@ -540,7 +551,7 @@ mod tests {
     #[test]
     fn test_learning_stats() {
         let mut analyzer = BertSemanticAnalyzer::new();
-        
+
         analyzer.add_to_history(0.5);
         analyzer.add_to_history(0.7);
         analyzer.add_to_history(0.6);
@@ -557,10 +568,10 @@ mod tests {
         analyzer1.add_to_history(0.8);
 
         let history = analyzer1.export_history();
-        
+
         let mut analyzer2 = BertSemanticAnalyzer::new();
         analyzer2.import_history(history);
-        
+
         assert_eq!(analyzer2.similarity_history.len(), 2);
     }
 }

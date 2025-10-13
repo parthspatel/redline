@@ -1,6 +1,6 @@
 //! Behavior-based clustering of diffs
 
-use crate::analyzers::{AnalysisResult, MultiDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, MultiDiffAnalyzer};
 use crate::diff::DiffResult;
 
 /// Clusters diffs by editing behavior patterns
@@ -38,10 +38,7 @@ impl BehaviorClusteringAnalyzer {
         let k = self.n_clusters.min(n);
 
         // Initialize centroids randomly
-        let mut centroids: Vec<Vec<f64>> = features.iter()
-            .take(k)
-            .cloned()
-            .collect();
+        let mut centroids: Vec<Vec<f64>> = features.iter().take(k).cloned().collect();
 
         let mut assignments = vec![0; n];
         let max_iterations = 100;
@@ -50,11 +47,13 @@ impl BehaviorClusteringAnalyzer {
             // Assign points to nearest centroid
             let mut changed = false;
             for (i, point) in features.iter().enumerate() {
-                let distances: Vec<f64> = centroids.iter()
+                let distances: Vec<f64> = centroids
+                    .iter()
                     .map(|centroid| self.euclidean_distance(point, centroid))
                     .collect();
 
-                let new_assignment = distances.iter()
+                let new_assignment = distances
+                    .iter()
                     .enumerate()
                     .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                     .map(|(idx, _)| idx)
@@ -72,7 +71,8 @@ impl BehaviorClusteringAnalyzer {
 
             // Update centroids
             for cluster_idx in 0..k {
-                let cluster_points: Vec<&Vec<f64>> = features.iter()
+                let cluster_points: Vec<&Vec<f64>> = features
+                    .iter()
                     .zip(&assignments)
                     .filter(|&(_, &a)| a == cluster_idx)
                     .map(|(p, _)| p)
@@ -106,13 +106,17 @@ impl BehaviorClusteringAnalyzer {
             return "Empty cluster".to_string();
         }
 
-        let avg_similarity = cluster_diffs.iter()
+        let avg_similarity = cluster_diffs
+            .iter()
             .map(|d| d.semantic_similarity)
-            .sum::<f64>() / cluster_diffs.len() as f64;
+            .sum::<f64>()
+            / cluster_diffs.len() as f64;
 
-        let avg_change = cluster_diffs.iter()
+        let avg_change = cluster_diffs
+            .iter()
             .map(|d| d.statistics.change_percentage)
-            .sum::<f64>() / cluster_diffs.len() as f64;
+            .sum::<f64>()
+            / cluster_diffs.len() as f64;
 
         // Determine dominant characteristics
         if avg_similarity > 0.8 && avg_change < 0.2 {
@@ -143,16 +147,15 @@ impl MultiDiffAnalyzer for BehaviorClusteringAnalyzer {
         }
 
         // Extract features
-        let features: Vec<Vec<f64>> = diffs.iter()
-            .map(|d| self.extract_features(d))
-            .collect();
+        let features: Vec<Vec<f64>> = diffs.iter().map(|d| self.extract_features(d)).collect();
 
         // Cluster
         let assignments = self.kmeans_cluster(&features);
 
         // Analyze clusters
         for cluster_id in 0..self.n_clusters {
-            let cluster_diffs: Vec<&DiffResult> = diffs.iter()
+            let cluster_diffs: Vec<&DiffResult> = diffs
+                .iter()
                 .zip(&assignments)
                 .filter(|&(_, &a)| a == cluster_id)
                 .map(|(d, _)| *d)
@@ -161,19 +164,19 @@ impl MultiDiffAnalyzer for BehaviorClusteringAnalyzer {
             let cluster_size = cluster_diffs.len();
             let cluster_pct = cluster_size as f64 / diffs.len() as f64;
 
-            result.add_metric(
-                format!("cluster_{}_size", cluster_id),
-                cluster_size as f64
-            );
+            result.add_metric(format!("cluster_{}_size", cluster_id), cluster_size as f64);
             result.add_metric(
                 format!("cluster_{}_percentage", cluster_id),
-                cluster_pct * 100.0
+                cluster_pct * 100.0,
             );
 
             let description = self.describe_cluster(diffs, &cluster_diffs);
             result.add_insight(format!(
                 "Cluster {}: {} ({:.1}% of diffs) - {}",
-                cluster_id, cluster_size, cluster_pct * 100.0, description
+                cluster_id,
+                cluster_size,
+                cluster_pct * 100.0,
+                description
             ));
         }
 

@@ -1,8 +1,8 @@
 //! Configuration for the diff engine
 
+use crate::execution::ExecutionPlan;
 use crate::pipeline::TextPipeline;
 use crate::tokenizers::Tokenizer;
-use crate::execution::ExecutionPlan;
 
 /// Diff algorithm selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,10 +53,10 @@ pub struct DiffConfig {
     pub ignore_case: bool,
 
     /// Single diff analyzers to run
-    pub(crate) analyzers: Vec<Box<dyn crate::analyzers::SingleDiffAnalyzer>>,
+    pub(crate) analyzers: Vec<Box<dyn crate::analyzer::SingleDiffAnalyzer>>,
 
     /// Change classifiers to run
-    pub(crate) classifiers: Vec<Box<dyn crate::analyzers::classifiers::ChangeClassifier>>,
+    pub(crate) classifiers: Vec<Box<dyn crate::analyzer::classifiers::ChangeClassifier>>,
 }
 
 impl Default for DiffConfig {
@@ -84,13 +84,16 @@ impl DiffConfig {
     }
 
     /// Add an analyzer to the configuration
-    pub fn add_analyzer(mut self, analyzer: Box<dyn crate::analyzers::SingleDiffAnalyzer>) -> Self {
+    pub fn add_analyzer(mut self, analyzer: Box<dyn crate::analyzer::SingleDiffAnalyzer>) -> Self {
         self.analyzers.push(analyzer);
         self
     }
 
     /// Add a classifier to the configuration
-    pub fn add_classifier(mut self, classifier: Box<dyn crate::analyzers::classifiers::ChangeClassifier>) -> Self {
+    pub fn add_classifier(
+        mut self,
+        classifier: Box<dyn crate::analyzer::classifiers::ChangeClassifier>,
+    ) -> Self {
         self.classifiers.push(classifier);
         self
     }
@@ -98,7 +101,7 @@ impl DiffConfig {
     /// Build an execution plan based on configured analyzers and classifiers
     /// This automatically determines which metrics need to be computed and in what order
     pub fn build_execution_plan(&self) -> ExecutionPlan {
-        use crate::execution::{ExecutionPlanBuilder, ExecutionNode, MetricType, NodeDependencies};
+        use crate::execution::{ExecutionNode, ExecutionPlanBuilder, MetricType, NodeDependencies};
 
         let mut builder = ExecutionPlanBuilder::new();
 
@@ -119,23 +122,33 @@ impl DiffConfig {
         // Legacy flag-based dependencies (for backward compatibility with old API)
         // TODO: Eventually remove these flags in favor of explicit analyzer/classifier registration
         if self.compute_semantic_similarity {
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::SemanticSimilarity))
-                .with_dependency(ExecutionNode::Metric(MetricType::WordOverlap)));
+            builder.add_node(
+                NodeDependencies::new(ExecutionNode::Metric(MetricType::SemanticSimilarity))
+                    .with_dependency(ExecutionNode::Metric(MetricType::WordOverlap)),
+            );
         }
 
         if self.analyze_style {
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::ReadabilityDiff))
-                .with_dependency(ExecutionNode::Metric(MetricType::FleschReadingEase)));
+            builder.add_node(
+                NodeDependencies::new(ExecutionNode::Metric(MetricType::ReadabilityDiff))
+                    .with_dependency(ExecutionNode::Metric(MetricType::FleschReadingEase)),
+            );
         }
 
         if self.classify_edits {
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
-                .with_dependency(ExecutionNode::Metric(MetricType::LevenshteinDistance)));
-            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap)));
+            builder.add_node(
+                NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
+                    .with_dependency(ExecutionNode::Metric(MetricType::LevenshteinDistance)),
+            );
+            builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+                MetricType::WordOverlap,
+            )));
         }
 
         // Build and return the plan
-        builder.build().expect("Failed to build execution plan - cyclic dependency detected")
+        builder
+            .build()
+            .expect("Failed to build execution plan - cyclic dependency detected")
     }
 
     /// Set the diff algorithm
@@ -260,11 +273,10 @@ mod tests {
 
     #[test]
     fn test_execution_plan_adapts_to_config() {
-        use crate::execution::{ExecutionNode, MetricType};
+        use crate::execution::MetricType;
 
         // Test that execution plan includes semantic similarity metrics when enabled
-        let config_with_semantic = DiffConfig::new()
-            .with_semantic_similarity(true);
+        let config_with_semantic = DiffConfig::new().with_semantic_similarity(true);
         let plan = config_with_semantic.build_execution_plan();
         let metrics = plan.get_required_metrics();
 
@@ -289,8 +301,7 @@ mod tests {
         use crate::execution::MetricType;
 
         // When style analysis is enabled, should include readability metrics
-        let config = DiffConfig::new()
-            .with_style_analysis(true);
+        let config = DiffConfig::new().with_style_analysis(true);
         let plan = config.build_execution_plan();
         let metrics = plan.get_required_metrics();
 
@@ -300,12 +311,11 @@ mod tests {
 
     #[test]
     fn test_execution_plan_from_classifiers() {
+        use crate::analyzer::classifiers::naive_bayes::NaiveBayesClassifier;
         use crate::execution::MetricType;
-        use crate::analyzers::classifiers::naive_bayes::NaiveBayesClassifier;
 
         // When a classifier is added, its dependencies should be included in the plan
-        let config = DiffConfig::new()
-            .add_classifier(Box::new(NaiveBayesClassifier::new()));
+        let config = DiffConfig::new().add_classifier(Box::new(NaiveBayesClassifier::new()));
 
         let plan = config.build_execution_plan();
         let metrics = plan.get_required_metrics();
@@ -321,9 +331,9 @@ mod tests {
 
     #[test]
     fn test_feature_analyzers_share_metrics() {
+        use crate::analyzer::classifiers::naive_bayes::NaiveBayesClassifier;
+        use crate::analyzer::single::{CharSimilarityAnalyzer, WordOverlapAnalyzer};
         use crate::execution::MetricType;
-        use crate::analyzers::single::{CharSimilarityAnalyzer, WordOverlapAnalyzer};
-        use crate::analyzers::classifiers::naive_bayes::NaiveBayesClassifier;
 
         // Add feature analyzers AND a classifier - they should share the same cached metrics
         let config = DiffConfig::new()
@@ -339,10 +349,22 @@ mod tests {
         assert!(metrics.contains(&MetricType::WordOverlap));
 
         // Count how many times CharSimilarity appears (should be 1, not 2)
-        let char_sim_count = metrics.iter().filter(|m| **m == MetricType::CharSimilarity).count();
-        assert_eq!(char_sim_count, 1, "CharSimilarity should only be computed once");
+        let char_sim_count = metrics
+            .iter()
+            .filter(|m| **m == MetricType::CharSimilarity)
+            .count();
+        assert_eq!(
+            char_sim_count, 1,
+            "CharSimilarity should only be computed once"
+        );
 
-        let word_overlap_count = metrics.iter().filter(|m| **m == MetricType::WordOverlap).count();
-        assert_eq!(word_overlap_count, 1, "WordOverlap should only be computed once");
+        let word_overlap_count = metrics
+            .iter()
+            .filter(|m| **m == MetricType::WordOverlap)
+            .count();
+        assert_eq!(
+            word_overlap_count, 1,
+            "WordOverlap should only be computed once"
+        );
     }
 }

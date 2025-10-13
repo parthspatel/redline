@@ -107,7 +107,7 @@ impl ParagraphSelector {
     /// Check if an operation overlaps with selected paragraphs
     fn operation_in_paragraphs(&self, op: &DiffOperation, para_spans: &[CharSpan]) -> bool {
         let op_span = op.original_span.or(op.modified_span);
-        
+
         if let Some(span) = op_span {
             for &para_idx in &self.paragraphs {
                 if let Some(para_span) = para_spans.get(para_idx) {
@@ -127,7 +127,7 @@ impl DiffSelector for ParagraphSelector {
     fn select<'a>(&self, diff: &'a DiffResult) -> Vec<&'a DiffOperation> {
         // Get paragraph boundaries from original text
         let para_spans = Self::get_paragraph_spans(&diff.original_text);
-        
+
         diff.operations
             .iter()
             .filter(|op| self.operation_in_paragraphs(op, &para_spans))
@@ -174,10 +174,10 @@ impl SectionSelector {
         let mut current_start = 0;
 
         let lines: Vec<&str> = text.lines().collect();
-        
+
         for (i, line) in lines.iter().enumerate() {
             let line_start = text[..text.lines().take(i).map(|l| l.len() + 1).sum()].len();
-            
+
             if Self::is_header_line(line) {
                 // Save previous section if exists
                 if !current_header.is_empty() {
@@ -186,7 +186,7 @@ impl SectionSelector {
                         CharSpan::new(current_start, line_start),
                     ));
                 }
-                
+
                 // Start new section
                 current_header = line.trim().to_string();
                 current_start = line_start;
@@ -203,31 +203,36 @@ impl SectionSelector {
 
     fn is_header_line(line: &str) -> bool {
         let trimmed = line.trim();
-        
+
         // Markdown headers
         if trimmed.starts_with('#') {
             return true;
         }
-        
+
         // All caps (with at least 3 words)
         let words: Vec<&str> = trimmed.split_whitespace().collect();
-        if words.len() >= 2 && words.iter().all(|w| w.chars().all(|c| c.is_uppercase() || !c.is_alphabetic())) {
+        if words.len() >= 2
+            && words
+                .iter()
+                .all(|w| w.chars().all(|c| c.is_uppercase() || !c.is_alphabetic()))
+        {
             return true;
         }
-        
+
         false
     }
 
     fn operation_in_sections(&self, op: &DiffOperation, sections: &[(String, CharSpan)]) -> bool {
         let op_span = op.original_span.or(op.modified_span);
-        
+
         if let Some(span) = op_span {
             for (header, section_span) in sections {
                 // Check if header matches any of our target sections
-                let header_matches = self.sections.iter().any(|target| {
-                    header.to_lowercase().contains(&target.to_lowercase())
-                });
-                
+                let header_matches = self
+                    .sections
+                    .iter()
+                    .any(|target| header.to_lowercase().contains(&target.to_lowercase()));
+
                 if header_matches {
                     // Check for overlap
                     if span.start < section_span.end && span.end > section_span.start {
@@ -244,7 +249,7 @@ impl SectionSelector {
 impl DiffSelector for SectionSelector {
     fn select<'a>(&self, diff: &'a DiffResult) -> Vec<&'a DiffOperation> {
         let sections = Self::get_section_spans(&diff.original_text);
-        
+
         diff.operations
             .iter()
             .filter(|op| self.operation_in_sections(op, &sections))
@@ -394,22 +399,20 @@ impl DiffSelector for CompositeSelector {
                 }
 
                 // Start with first selector's results
-                let mut result: std::collections::HashSet<*const DiffOperation> = 
-                    selectors[0]
+                let mut result: std::collections::HashSet<*const DiffOperation> = selectors[0]
+                    .select(diff)
+                    .into_iter()
+                    .map(|op| op as *const _)
+                    .collect();
+
+                // Intersect with remaining selectors
+                for selector in &selectors[1..] {
+                    let selected: std::collections::HashSet<*const DiffOperation> = selector
                         .select(diff)
                         .into_iter()
                         .map(|op| op as *const _)
                         .collect();
 
-                // Intersect with remaining selectors
-                for selector in &selectors[1..] {
-                    let selected: std::collections::HashSet<*const DiffOperation> = 
-                        selector
-                            .select(diff)
-                            .into_iter()
-                            .map(|op| op as *const _)
-                            .collect();
-                    
                     result.retain(|op| selected.contains(op));
                 }
 
@@ -420,7 +423,7 @@ impl DiffSelector for CompositeSelector {
                     .collect()
             }
             CompositeSelector::Or(selectors) => {
-                let mut result: std::collections::HashSet<*const DiffOperation> = 
+                let mut result: std::collections::HashSet<*const DiffOperation> =
                     std::collections::HashSet::new();
 
                 for selector in selectors {
@@ -459,10 +462,10 @@ mod tests {
     fn test_whole_document_selector() {
         let engine = DiffEngine::default();
         let diff = engine.diff("hello world", "hello rust");
-        
+
         let selector = WholeDocumentSelector;
         let selected = selector.select(&diff);
-        
+
         assert_eq!(selected.len(), diff.operations.len());
     }
 
@@ -470,10 +473,10 @@ mod tests {
     fn test_edit_type_selector() {
         let engine = DiffEngine::default();
         let diff = engine.diff("hello world", "hello rust world");
-        
+
         let selector = EditTypeSelector::insertions();
         let selected = selector.select(&diff);
-        
+
         assert!(selected.iter().all(|op| op.edit_type == EditType::Insert));
     }
 
@@ -481,13 +484,13 @@ mod tests {
     fn test_paragraph_selector() {
         let text1 = "Paragraph 1\n\nParagraph 2\n\nParagraph 3";
         let text2 = "Paragraph 1\n\nModified Para 2\n\nParagraph 3";
-        
+
         let engine = DiffEngine::default();
         let diff = engine.diff(text1, text2);
-        
+
         let selector = ParagraphSelector::single(1); // Select second paragraph
         let selected = selector.select(&diff);
-        
+
         // Should only get operations from paragraph 2
         assert!(selected.len() > 0);
     }

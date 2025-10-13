@@ -1,6 +1,6 @@
 //! Feature analyzers that cache metrics from StandardFeatureExtractor
 
-use crate::analyzers::{AnalysisResult, SingleDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
 /// Analyzer that computes and caches character similarity metric
@@ -92,9 +92,9 @@ impl SingleDiffAnalyzer for WordCountDiffAnalyzer {
     fn dependencies(&self) -> Vec<crate::execution::NodeDependencies> {
         use crate::execution::{ExecutionNode, MetricType, NodeDependencies};
 
-        vec![
-            NodeDependencies::new(ExecutionNode::Metric(MetricType::WordCountDiff)),
-        ]
+        vec![NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::WordCountDiff,
+        ))]
     }
 
     fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
@@ -124,9 +124,26 @@ impl SingleDiffAnalyzer for NegationChangedAnalyzer {
 
         // Use cached metrics if available
         let metrics = diff.get_metrics_ref();
-        result.add_metric("negation_changed", if metrics.negation_changed { 1.0 } else { 0.0 });
-        result.add_metric("original_has_negation", if metrics.original.has_negation { 1.0 } else { 0.0 });
-        result.add_metric("modified_has_negation", if metrics.modified.has_negation { 1.0 } else { 0.0 });
+        result.add_metric(
+            "negation_changed",
+            if metrics.negation_changed { 1.0 } else { 0.0 },
+        );
+        result.add_metric(
+            "original_has_negation",
+            if metrics.original.has_negation {
+                1.0
+            } else {
+                0.0
+            },
+        );
+        result.add_metric(
+            "modified_has_negation",
+            if metrics.modified.has_negation {
+                1.0
+            } else {
+                0.0
+            },
+        );
 
         if metrics.negation_changed {
             result.add_insight("Negation state changed between texts");

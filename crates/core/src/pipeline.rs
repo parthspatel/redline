@@ -11,11 +11,11 @@ use crate::normalizers::Normalizer;
 pub struct NormalizationLayer {
     /// The normalized text at this layer
     pub text: String,
-    
+
     /// Mapping from this layer back to the previous layer
     /// For the first layer, this maps to the original input
     pub mapping: CharacterMap,
-    
+
     /// Optional metadata about this normalization
     pub metadata: LayerMetadata,
 }
@@ -25,7 +25,7 @@ pub struct NormalizationLayer {
 pub struct LayerMetadata {
     /// Name of the normalizer that created this layer
     pub normalizer_name: String,
-    
+
     /// Additional information (e.g., parameters used)
     pub info: Vec<(String, String)>,
 }
@@ -104,7 +104,7 @@ impl TextPipeline {
 
         for normalizer in &self.normalizers {
             let (normalized, mapping) = normalizer.normalize(&current_text);
-            
+
             let metadata = LayerMetadata {
                 normalizer_name: normalizer.name().to_string(),
                 info: normalizer.metadata(),
@@ -146,7 +146,7 @@ impl TextPipeline {
 pub struct LayerSet {
     /// The original input text (layer 0)
     original: String,
-    
+
     /// All normalization layers (layer 1, 2, 3, ...)
     layers: Vec<NormalizationLayer>,
 }
@@ -221,17 +221,17 @@ impl LayerSet {
 
         // Start from the specified layer and work backwards
         let mut current_positions = vec![position];
-        
+
         for i in (0..layer_index).rev() {
             let layer = &self.layers[i];
             let mut next_positions = Vec::new();
-            
+
             for &pos in &current_positions {
                 if let Some(mapped) = layer.mapping.normalized_to_original(pos) {
                     next_positions.extend(mapped.all_positions());
                 }
             }
-            
+
             current_positions = next_positions;
         }
 
@@ -246,7 +246,7 @@ impl LayerSet {
 
         // Compose all mappings in reverse order
         let mut composed = self.layers[0].mapping.clone();
-        
+
         for layer in &self.layers[1..] {
             composed = composed.compose(&layer.mapping);
         }
@@ -260,7 +260,7 @@ impl LayerSet {
     }
 
     /// Create an iterator over all layers (including original as layer 0)
-    pub fn iter(&self) -> LayerIterator {
+    pub fn iter(&self) -> LayerIterator<'_> {
         LayerIterator {
             layer_set: self,
             current_index: 0,
@@ -295,7 +295,7 @@ mod tests {
     fn test_empty_pipeline() {
         let pipeline = TextPipeline::new();
         let layers = pipeline.process("Hello World");
-        
+
         assert_eq!(layers.num_layers(), 1); // Just original
         assert_eq!(layers.original(), "Hello World");
         assert_eq!(layers.final_layer(), "Hello World");
@@ -303,11 +303,10 @@ mod tests {
 
     #[test]
     fn test_single_normalizer() {
-        let pipeline = TextPipeline::new()
-            .add_normalizer(Box::new(Lowercase));
-        
+        let pipeline = TextPipeline::new().add_normalizer(Box::new(Lowercase));
+
         let layers = pipeline.process("Hello World");
-        
+
         assert_eq!(layers.num_layers(), 2); // Original + 1 normalization
         assert_eq!(layers.original(), "Hello World");
         assert_eq!(layers.final_layer(), "hello world");
@@ -315,22 +314,20 @@ mod tests {
 
     #[test]
     fn test_layer_iteration() {
-        let pipeline = TextPipeline::new()
-            .add_normalizer(Box::new(Lowercase));
-        
+        let pipeline = TextPipeline::new().add_normalizer(Box::new(Lowercase));
+
         let layers = pipeline.process("TEST");
         let texts: Vec<&str> = layers.iter().collect();
-        
+
         assert_eq!(texts, vec!["TEST", "test"]);
     }
 
     #[test]
     fn test_map_to_original() {
-        let pipeline = TextPipeline::new()
-            .add_normalizer(Box::new(Lowercase));
-        
+        let pipeline = TextPipeline::new().add_normalizer(Box::new(Lowercase));
+
         let layers = pipeline.process("ABC");
-        
+
         // Position 1 in layer 1 should map to position 1 in original
         let positions = layers.map_to_original(1, 1);
         assert_eq!(positions, vec![1]);

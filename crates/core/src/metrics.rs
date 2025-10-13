@@ -38,14 +38,13 @@ impl TextMetrics {
         let words: Vec<&str> = text.split_whitespace().collect();
         let word_count = words.len();
 
-        let sentence_count = text.chars()
+        let sentence_count = text
+            .chars()
             .filter(|c| matches!(c, '.' | '!' | '?'))
             .count()
             .max(1);
 
-        let syllable_count: usize = words.iter()
-            .map(|w| count_syllables(w))
-            .sum();
+        let syllable_count: usize = words.iter().map(|w| count_syllables(w)).sum();
 
         let whitespace_count = text.chars().filter(|c| c.is_whitespace()).count();
         let punctuation_count = text.chars().filter(|c| c.is_ascii_punctuation()).count();
@@ -167,9 +166,12 @@ impl PairwiseMetrics {
         };
 
         // Diff metrics
-        let readability_diff = (modified_metrics.flesch_reading_ease - original_metrics.flesch_reading_ease).abs();
-        let word_count_diff = (modified_metrics.word_count as f64 - original_metrics.word_count as f64).abs();
-        let whitespace_ratio_diff = (modified_metrics.whitespace_ratio - original_metrics.whitespace_ratio).abs();
+        let readability_diff =
+            (modified_metrics.flesch_reading_ease - original_metrics.flesch_reading_ease).abs();
+        let word_count_diff =
+            (modified_metrics.word_count as f64 - original_metrics.word_count as f64).abs();
+        let whitespace_ratio_diff =
+            (modified_metrics.whitespace_ratio - original_metrics.whitespace_ratio).abs();
         let negation_changed = original_metrics.has_negation != modified_metrics.has_negation;
 
         Self {
@@ -221,16 +223,17 @@ fn count_syllables(word: &str) -> usize {
 
 fn compute_stopword_ratio(words: &[&str]) -> f64 {
     const STOPWORDS: &[&str] = &[
-        "a", "an", "and", "are", "as", "at", "be", "been", "but", "by",
-        "for", "from", "has", "have", "he", "in", "is", "it", "its",
-        "of", "on", "or", "that", "the", "to", "was", "were", "will", "with"
+        "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "for", "from", "has",
+        "have", "he", "in", "is", "it", "its", "of", "on", "or", "that", "the", "to", "was",
+        "were", "will", "with",
     ];
 
     if words.is_empty() {
         return 0.0;
     }
 
-    let stopword_count = words.iter()
+    let stopword_count = words
+        .iter()
         .filter(|w| STOPWORDS.contains(&w.to_lowercase().as_str()))
         .count();
 
@@ -238,7 +241,9 @@ fn compute_stopword_ratio(words: &[&str]) -> f64 {
 }
 
 fn contains_negation(text: &str) -> bool {
-    const NEGATION_WORDS: &[&str] = &["not", "no", "never", "neither", "none", "nobody", "nothing", "nowhere"];
+    const NEGATION_WORDS: &[&str] = &[
+        "not", "no", "never", "neither", "none", "nobody", "nothing", "nowhere",
+    ];
 
     let lower = text.to_lowercase();
 
@@ -278,15 +283,9 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
 }
 
 fn compute_word_overlap(s1: &str, s2: &str) -> f64 {
-    let words1: HashSet<_> = s1
-        .split_whitespace()
-        .map(|w| w.to_lowercase())
-        .collect();
+    let words1: HashSet<_> = s1.split_whitespace().map(|w| w.to_lowercase()).collect();
 
-    let words2: HashSet<_> = s2
-        .split_whitespace()
-        .map(|w| w.to_lowercase())
-        .collect();
+    let words2: HashSet<_> = s2.split_whitespace().map(|w| w.to_lowercase()).collect();
 
     if words1.is_empty() && words2.is_empty() {
         return 1.0;

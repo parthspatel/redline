@@ -124,8 +124,8 @@ In addition to the core diff library, I've now implemented a comprehensive **ana
 ### Basic Usage
 
 ```rust
-use redline_core::analyzers::single::SemanticSimilarityAnalyzer;
-use redline_core::analyzers::SingleDiffAnalyzer;
+use redline_core::analyzer::single::SemanticSimilarityAnalyzer;
+use redline_core::analyzer::SingleDiffAnalyzer;
 
 let diff = engine.diff("original", "edited");
 let analyzer = SemanticSimilarityAnalyzer::new();
@@ -138,7 +138,7 @@ println!("Similarity: {:.1}%",
 ### Multi-Diff Pattern Detection
 
 ```rust
-use redline_core::analyzers::multi::PatternDetectionAnalyzer;
+use redline_core::analyzer::multi::PatternDetectionAnalyzer;
 
 let diffs: Vec<&DiffResult> = collect_all_diffs();
 let analyzer = PatternDetectionAnalyzer::new();
@@ -170,7 +170,7 @@ for op in diff.changed_operations() {
 ### Selective Analysis
 
 ```rust
-use redline_core::analyzers::selectors::{ParagraphSelector, EditTypeSelector};
+use redline_core::analyzer::selectors::{ParagraphSelector, EditTypeSelector};
 
 // Analyze only insertions in paragraph 2
 let para_selector = ParagraphSelector::single(1);
@@ -387,7 +387,7 @@ let clusters = BehaviorClusteringAnalyzer::new(3).analyze(&all_diffs);
 
 2. **Integrate into your project:**
    ```rust
-   use redline_core::analyzers::single::*;
+   use redline_core::analyzer::single::*;
    use redline_core::classifiers::*;
    ```
 

@@ -1,8 +1,9 @@
 //! Main diff engine that orchestrates the entire diff process
 
-use crate::algorithms::{
-    DiffAlgorithm as DiffAlgoTrait, HistogramAlgorithm, MyersAlgorithm, PatienceAlgorithm,
-};
+use crate::algorithm::histogram::HistogramAlgorithm;
+use crate::algorithm::myers::MyersAlgorithm;
+use crate::algorithm::patience::PatienceAlgorithm;
+use crate::algorithm::DiffAlgorithm as DiffAlgoTrait;
 use crate::config::{DiffAlgorithm, DiffConfig};
 use crate::diff::{ChangeCategory, DiffResult, EditType};
 use crate::normalizers::Lowercase;
@@ -55,8 +56,7 @@ impl DiffEngine {
 
         // Step 4: Perform analysis if enabled (now using cached metrics)
         if self.config.compute_semantic_similarity {
-           result.analysis.semantic_similarity =
-                self.compute_semantic_similarity(&result);
+            result.analysis.semantic_similarity = self.compute_semantic_similarity(&result);
         }
 
         if self.config.analyze_style {
@@ -77,7 +77,7 @@ impl DiffEngine {
     /// Execute metrics in dependency order based on execution plan
     fn execute_plan(&self, plan: &crate::execution::ExecutionPlan, result: &mut DiffResult) {
         use crate::execution::ExecutionNode;
-        use crate::metrics::{TextMetrics, PairwiseMetrics};
+        use crate::metrics::{PairwiseMetrics, TextMetrics};
 
         // Initialize metrics structure
         let original_metrics = TextMetrics::compute(&result.original_text);
@@ -99,7 +99,12 @@ impl DiffEngine {
         for node in plan.execution_order() {
             match node {
                 ExecutionNode::Metric(metric_type) => {
-                    self.compute_metric(*metric_type, &mut pairwise, &original_metrics, &modified_metrics);
+                    self.compute_metric(
+                        *metric_type,
+                        &mut pairwise,
+                        &original_metrics,
+                        &modified_metrics,
+                    );
                 }
                 ExecutionNode::Analyzer(_name) => {
                     // Analyzers will be run later, just ensure metrics are ready
@@ -138,11 +143,13 @@ impl DiffEngine {
             MetricType::WordOverlap => {
                 // Compute word overlap (Jaccard similarity)
                 use std::collections::HashSet;
-                let words1: HashSet<_> = original.text()
+                let words1: HashSet<_> = original
+                    .text()
                     .split_whitespace()
                     .map(|w| w.to_lowercase())
                     .collect();
-                let words2: HashSet<_> = modified.text()
+                let words2: HashSet<_> = modified
+                    .text()
                     .split_whitespace()
                     .map(|w| w.to_lowercase())
                     .collect();
@@ -158,7 +165,8 @@ impl DiffEngine {
                 };
             }
             MetricType::LevenshteinDistance => {
-                pairwise.levenshtein_distance = levenshtein_distance(original.text(), modified.text());
+                pairwise.levenshtein_distance =
+                    levenshtein_distance(original.text(), modified.text());
             }
             MetricType::LengthRatio => {
                 let len1 = original.char_count as f64;
@@ -168,17 +176,24 @@ impl DiffEngine {
                 } else {
                     let max_len = len1.max(len2);
                     let min_len = len1.min(len2);
-                    if max_len == 0.0 { 0.0 } else { min_len / max_len }
+                    if max_len == 0.0 {
+                        0.0
+                    } else {
+                        min_len / max_len
+                    }
                 };
             }
             MetricType::ReadabilityDiff => {
-                pairwise.readability_diff = (modified.flesch_reading_ease - original.flesch_reading_ease).abs();
+                pairwise.readability_diff =
+                    (modified.flesch_reading_ease - original.flesch_reading_ease).abs();
             }
             MetricType::WordCountDiff => {
-                pairwise.word_count_diff = (modified.word_count as f64 - original.word_count as f64).abs();
+                pairwise.word_count_diff =
+                    (modified.word_count as f64 - original.word_count as f64).abs();
             }
             MetricType::WhitespaceRatioDiff => {
-                pairwise.whitespace_ratio_diff = (modified.whitespace_ratio - original.whitespace_ratio).abs();
+                pairwise.whitespace_ratio_diff =
+                    (modified.whitespace_ratio - original.whitespace_ratio).abs();
             }
             MetricType::NegationChanged => {
                 pairwise.negation_changed = original.has_negation != modified.has_negation;
@@ -195,7 +210,11 @@ impl DiffEngine {
     }
 
     /// Normalize and tokenize both input strings
-    fn normalize_and_tokenize(&self, original: &str, modified: &str) -> (Vec<Token>, Vec<Token>, String, String) {
+    fn normalize_and_tokenize(
+        &self,
+        original: &str,
+        modified: &str,
+    ) -> (Vec<Token>, Vec<Token>, String, String) {
         // Get or create pipeline
         let pipeline = self
             .config
@@ -224,11 +243,20 @@ impl DiffEngine {
         let original_tokens = tokenizer.tokenize(&original_layers);
         let modified_tokens = tokenizer.tokenize(&modified_layers);
 
-        (original_tokens, modified_tokens, normalized_original, normalized_modified)
+        (
+            original_tokens,
+            modified_tokens,
+            normalized_original,
+            normalized_modified,
+        )
     }
 
     /// Compute diff operations using the configured algorithm
-    fn compute_diff_operations(&self, original: &[Token], modified: &[Token]) -> Vec<crate::diff::DiffOperation> {
+    fn compute_diff_operations(
+        &self,
+        original: &[Token],
+        modified: &[Token],
+    ) -> Vec<crate::diff::DiffOperation> {
         let algorithm: Box<dyn DiffAlgoTrait> = match self.config.algorithm {
             DiffAlgorithm::Myers => Box::new(MyersAlgorithm::new()),
             DiffAlgorithm::Patience => Box::new(PatienceAlgorithm::new()),
@@ -248,11 +276,22 @@ impl DiffEngine {
     /// Analyze stylistic changes using cached metrics
     fn analyze_style_change(&self, result: &DiffResult) -> f64 {
         let metrics = result.get_metrics_ref();
-        let length_change = (metrics.original.char_count as f64 - metrics.modified.char_count as f64).abs()
-            / metrics.original.char_count.max(metrics.modified.char_count).max(1) as f64;
+        let length_change =
+            (metrics.original.char_count as f64 - metrics.modified.char_count as f64).abs()
+                / metrics
+                    .original
+                    .char_count
+                    .max(metrics.modified.char_count)
+                    .max(1) as f64;
 
-        let punct_change = (metrics.original.punctuation_count as f64 - metrics.modified.punctuation_count as f64).abs()
-            / metrics.original.punctuation_count.max(metrics.modified.punctuation_count).max(1) as f64;
+        let punct_change = (metrics.original.punctuation_count as f64
+            - metrics.modified.punctuation_count as f64)
+            .abs()
+            / metrics
+                .original
+                .punctuation_count
+                .max(metrics.modified.punctuation_count)
+                .max(1) as f64;
 
         (length_change + punct_change) / 2.0
     }
@@ -266,7 +305,8 @@ impl DiffEngine {
     /// Classify edit operations into categories
     fn classify_edit_operations(&self, result: &mut DiffResult) {
         // First check if the overall change is just case-only
-        let is_case_only_change = result.original_text.to_lowercase() == result.modified_text.to_lowercase()
+        let is_case_only_change = result.original_text.to_lowercase()
+            == result.modified_text.to_lowercase()
             && result.original_text != result.modified_text;
 
         for op in &mut result.operations {
@@ -299,11 +339,11 @@ impl DiffEngine {
     /// Get default pipeline
     fn default_pipeline(&self) -> TextPipeline {
         let mut pipeline = TextPipeline::new();
-        
+
         if self.config.ignore_case {
             pipeline = pipeline.add_normalizer(Box::new(Lowercase));
         }
-        
+
         pipeline
     }
 
@@ -326,19 +366,19 @@ impl Default for DiffEngine {
 fn classify_change(original: &str, modified: &str) -> ChangeCategory {
     let orig_lower = original.to_lowercase();
     let mod_lower = modified.to_lowercase();
-    
+
     // If only case changed, it's formatting
     if orig_lower == mod_lower {
         return ChangeCategory::Formatting;
     }
-    
+
     // If words are similar (Levenshtein distance is small), likely syntactic
     let edit_distance = levenshtein_distance(&orig_lower, &mod_lower);
     let max_len = original.len().max(modified.len());
-    
+
     if max_len > 0 {
         let similarity = 1.0 - (edit_distance as f64 / max_len as f64);
-        
+
         if similarity > 0.8 {
             ChangeCategory::Syntactic
         } else if similarity > 0.5 {
@@ -383,7 +423,7 @@ mod tests {
     fn test_basic_diff() {
         let engine = DiffEngine::default();
         let result = engine.diff("hello world", "hello rust");
-        
+
         assert!(!result.is_empty());
         assert!(result.statistics.insertions > 0 || result.statistics.deletions > 0);
     }
@@ -392,7 +432,7 @@ mod tests {
     fn test_identical_text() {
         let engine = DiffEngine::default();
         let result = engine.diff("hello world", "hello world");
-        
+
         assert_eq!(result.statistics.insertions, 0);
         assert_eq!(result.statistics.deletions, 0);
         assert_eq!(result.semantic_similarity, 1.0);
@@ -412,10 +452,10 @@ mod tests {
         let config = DiffConfig::default()
             .with_pipeline(TextPipeline::new().add_normalizer(Box::new(Lowercase)))
             .with_ignore_case(true);
-        
+
         let engine = DiffEngine::new(config);
         let result = engine.diff("HELLO WORLD", "hello world");
-        
+
         // Should recognize as same after normalization
         assert!(result.semantic_similarity > 0.9);
     }

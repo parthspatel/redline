@@ -2,21 +2,21 @@
 //!
 //! Analyzers that operate on collections of diff results to find patterns and trends
 
-pub mod statistics;
-pub mod patterns;
 pub mod clustering;
+pub mod patterns;
+pub mod statistics;
 pub mod trends;
 
 // Re-export all analyzers
-pub use statistics::*;
-pub use patterns::*;
 pub use clustering::*;
+pub use patterns::*;
+pub use statistics::*;
 pub use trends::*;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::analyzers::MultiDiffAnalyzer;
+    use crate::analyzer::MultiDiffAnalyzer;
     use crate::DiffEngine;
 
     #[test]
@@ -38,9 +38,9 @@ mod tests {
     fn test_pattern_detection() {
         let engine = DiffEngine::default();
         // Use examples that clearly show expansion with word tokenization
-        let diff1 = engine.diff("hello", "hello world");  // Expansion (adds word)
-        let diff2 = engine.diff("foo", "foo bar");        // Expansion (adds word)
-        let diff3 = engine.diff("test", "test case");     // Expansion (adds word)
+        let diff1 = engine.diff("hello", "hello world"); // Expansion (adds word)
+        let diff2 = engine.diff("foo", "foo bar"); // Expansion (adds word)
+        let diff3 = engine.diff("test", "test case"); // Expansion (adds word)
 
         let diffs = vec![&diff1, &diff2, &diff3];
 

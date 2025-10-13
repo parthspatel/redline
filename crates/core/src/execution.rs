@@ -120,7 +120,7 @@ impl ExecutionPlan {
 
     /// Perform topological sort using Kahn's algorithm
     fn topological_sort(
-        dependencies: &HashMap<ExecutionNode, Vec<ExecutionNode>>
+        dependencies: &HashMap<ExecutionNode, Vec<ExecutionNode>>,
     ) -> Result<Vec<ExecutionNode>, ExecutionError> {
         // Build in-degree map and reverse dependency graph
         // dependencies maps: node -> [things node depends on]
@@ -147,14 +147,16 @@ impl ExecutionPlan {
             *in_degree.get_mut(node).unwrap() += deps.len();
 
             for dep in deps {
-                reverse_deps.entry(dep.clone())
+                reverse_deps
+                    .entry(dep.clone())
                     .or_insert_with(Vec::new)
                     .push(node.clone());
             }
         }
 
         // Find nodes with no dependencies (in-degree = 0)
-        let mut queue: VecDeque<ExecutionNode> = in_degree.iter()
+        let mut queue: VecDeque<ExecutionNode> = in_degree
+            .iter()
             .filter(|(_, degree)| **degree == 0)
             .map(|(node, _)| node.clone())
             .collect();
@@ -196,7 +198,8 @@ impl ExecutionPlan {
 
     /// Get metrics that should be precomputed
     pub fn get_required_metrics(&self) -> Vec<MetricType> {
-        self.execution_order.iter()
+        self.execution_order
+            .iter()
             .filter_map(|node| {
                 if let ExecutionNode::Metric(metric) = node {
                     Some(*metric)
@@ -250,7 +253,9 @@ pub enum ExecutionError {
 impl std::fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExecutionError::CyclicDependency => write!(f, "Cyclic dependency detected in execution plan"),
+            ExecutionError::CyclicDependency => {
+                write!(f, "Cyclic dependency detected in execution plan")
+            }
             ExecutionError::InvalidDependency => write!(f, "Invalid dependency reference"),
         }
     }
@@ -267,16 +272,26 @@ mod tests {
         let mut builder = ExecutionPlanBuilder::new();
 
         // B depends on A
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap))
-            .with_dependency(ExecutionNode::Metric(MetricType::WordCount)));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::WordCount,
+        )));
+        builder.add_node(
+            NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap))
+                .with_dependency(ExecutionNode::Metric(MetricType::WordCount)),
+        );
 
         let plan = builder.build().unwrap();
         let order = plan.execution_order();
 
         // WordCount should come before WordOverlap
-        let word_count_pos = order.iter().position(|n| n == &ExecutionNode::Metric(MetricType::WordCount)).unwrap();
-        let word_overlap_pos = order.iter().position(|n| n == &ExecutionNode::Metric(MetricType::WordOverlap)).unwrap();
+        let word_count_pos = order
+            .iter()
+            .position(|n| n == &ExecutionNode::Metric(MetricType::WordCount))
+            .unwrap();
+        let word_overlap_pos = order
+            .iter()
+            .position(|n| n == &ExecutionNode::Metric(MetricType::WordOverlap))
+            .unwrap();
 
         assert!(word_count_pos < word_overlap_pos);
     }
@@ -286,11 +301,17 @@ mod tests {
         let mut builder = ExecutionPlanBuilder::new();
 
         // Chain: A -> B -> C
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
-            .with_dependency(ExecutionNode::Metric(MetricType::CharCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Analyzer("test".to_string()))
-            .with_dependency(ExecutionNode::Metric(MetricType::CharSimilarity)));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::CharCount,
+        )));
+        builder.add_node(
+            NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity))
+                .with_dependency(ExecutionNode::Metric(MetricType::CharCount)),
+        );
+        builder.add_node(
+            NodeDependencies::new(ExecutionNode::Analyzer("test".to_string()))
+                .with_dependency(ExecutionNode::Metric(MetricType::CharSimilarity)),
+        );
 
         let plan = builder.build().unwrap();
         let order = plan.execution_order();
@@ -307,9 +328,15 @@ mod tests {
         let mut builder = ExecutionPlanBuilder::new();
 
         // A, B, C all independent
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordCount)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::SentenceCount)));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::CharCount,
+        )));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::WordCount,
+        )));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::SentenceCount,
+        )));
 
         let plan = builder.build().unwrap();
 
@@ -322,8 +349,12 @@ mod tests {
         let mut builder = ExecutionPlanBuilder::new();
 
         // Manually add some metrics to test get_required_metrics
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap)));
-        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(MetricType::CharSimilarity)));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::WordOverlap,
+        )));
+        builder.add_node(NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::CharSimilarity,
+        )));
 
         let plan = builder.build().unwrap();
         let metrics = plan.get_required_metrics();

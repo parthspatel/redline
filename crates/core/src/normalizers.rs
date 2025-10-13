@@ -3,7 +3,7 @@
 //! Provides the `Normalizer` trait and various implementations for text transformation.
 //! Each normalizer transforms text while maintaining character-level mappings.
 
-use crate::mapping::{CharacterMap, CharSpan};
+use crate::mapping::{CharSpan, CharacterMap};
 
 /// Trait for text normalizers
 pub trait Normalizer: Send + Sync {
@@ -183,7 +183,7 @@ impl Normalizer for WhitespaceNormalizer {
                 // Emit collapsed whitespace if needed
                 if in_whitespace {
                     let whitespace_end = orig_pos;
-                    
+
                     if self.collapse {
                         normalized.push(' ');
                         map.add_collapsed_mapping(
@@ -199,7 +199,7 @@ impl Normalizer for WhitespaceNormalizer {
                             norm_pos += 1;
                         }
                     }
-                    
+
                     in_whitespace = false;
                 }
 
@@ -285,18 +285,17 @@ impl Normalizer for RemoveAccents {
     fn normalize(&self, input: &str) -> (String, CharacterMap) {
         // Use Unicode normalization to decompose characters
         use unicode_normalization::UnicodeNormalization;
-        
+
         let mut normalized = String::new();
         let mut map = CharacterMap::new(input.len(), 0);
         let mut norm_pos = 0;
 
         for (orig_pos, ch) in input.char_indices() {
             let decomposed: String = ch.nfd().collect();
-            
+
             // Keep only the base character (first in decomposition)
             if let Some(base_char) = decomposed.chars().next() {
-                if !base_char.is_ascii_punctuation() 
-                    && !is_combining_mark(base_char) {
+                if !base_char.is_ascii_punctuation() && !is_combining_mark(base_char) {
                     normalized.push(base_char);
                     map.add_direct_mapping(norm_pos, orig_pos);
                     norm_pos += 1;
@@ -375,17 +374,17 @@ impl CustomNormalizer {
 impl Normalizer for CustomNormalizer {
     fn normalize(&self, input: &str) -> (String, CharacterMap) {
         let normalized = (self.func)(input);
-        
+
         // Build a simple character-by-character mapping
         // This is a simplification - custom normalizers should ideally
         // provide their own mapping logic
         let mut map = CharacterMap::new(input.len(), normalized.len());
-        
+
         let min_len = input.len().min(normalized.len());
         for i in 0..min_len {
             map.add_direct_mapping(i, i);
         }
-        
+
         // Handle length differences
         if normalized.len() > input.len() {
             for i in input.len()..normalized.len() {

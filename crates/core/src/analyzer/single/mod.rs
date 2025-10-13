@@ -1,14 +1,14 @@
 //! Single diff analyzers organized by analysis type
 
-pub mod semantic;
-pub mod readability;
-pub mod stylistic;
 pub mod category;
 pub mod features;
+pub mod readability;
+pub mod semantic;
+pub mod stylistic;
 
 // Re-export all analyzers
-pub use semantic::*;
-pub use readability::*;
-pub use stylistic::*;
 pub use category::*;
 pub use features::*;
+pub use readability::*;
+pub use semantic::*;
+pub use stylistic::*;

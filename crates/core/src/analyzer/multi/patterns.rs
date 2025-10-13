@@ -1,6 +1,6 @@
 //! Pattern detection across multiple diffs
 
-use crate::analyzers::{AnalysisResult, MultiDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, MultiDiffAnalyzer};
 use crate::diff::{DiffResult, EditType};
 use std::collections::HashMap;
 
@@ -48,15 +48,17 @@ impl MultiDiffAnalyzer for PatternDetectionAnalyzer {
             }
         }
 
-        if let Some((dominant_type, count)) = edit_type_counts.iter()
+        if let Some((dominant_type, count)) = edit_type_counts
+            .iter()
             .filter(|(t, _)| **t != EditType::Equal)
-            .max_by_key(|(_, count)| *count) {
-
+            .max_by_key(|(_, count)| *count)
+        {
             let frequency = *count as f64 / total;
             if frequency >= self.min_frequency {
                 result.add_insight(format!(
                     "Pattern: {:?} edits are common ({:.1}% of operations)",
-                    dominant_type, frequency * 100.0
+                    dominant_type,
+                    frequency * 100.0
                 ));
             }
         }
@@ -72,24 +74,26 @@ impl MultiDiffAnalyzer for PatternDetectionAnalyzer {
             }
         }
 
-        if let Some((dominant_cat, count)) = category_counts.iter()
-            .max_by_key(|(_, count)| *count) {
-
+        if let Some((dominant_cat, count)) = category_counts.iter().max_by_key(|(_, count)| *count)
+        {
             let frequency = *count as f64 / total;
             if frequency >= self.min_frequency {
                 result.add_insight(format!(
                     "Pattern: {} changes are dominant ({:.1}% frequency)",
-                    dominant_cat, frequency * 100.0
+                    dominant_cat,
+                    frequency * 100.0
                 ));
                 result.add_metadata("dominant_category", dominant_cat);
             }
         }
 
         // Pattern 3: Consistent expansion or reduction
-        let expansions = diffs.iter()
+        let expansions = diffs
+            .iter()
             .filter(|d| d.statistics.insertions > d.statistics.deletions)
             .count();
-        let reductions = diffs.iter()
+        let reductions = diffs
+            .iter()
             .filter(|d| d.statistics.deletions > d.statistics.insertions)
             .count();
 
@@ -113,12 +117,8 @@ impl MultiDiffAnalyzer for PatternDetectionAnalyzer {
         }
 
         // Pattern 4: Low vs High similarity clustering
-        let low_similarity = diffs.iter()
-            .filter(|d| d.semantic_similarity < 0.5)
-            .count();
-        let high_similarity = diffs.iter()
-            .filter(|d| d.semantic_similarity > 0.8)
-            .count();
+        let low_similarity = diffs.iter().filter(|d| d.semantic_similarity < 0.5).count();
+        let high_similarity = diffs.iter().filter(|d| d.semantic_similarity > 0.8).count();
 
         if low_similarity as f64 / total >= self.min_frequency {
             result.add_insight(format!(

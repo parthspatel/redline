@@ -2,19 +2,19 @@
 //!
 //! Implements various classification techniques from the research document
 
-pub mod semantic;
+pub mod bert_semantic;
+pub mod naive_bayes;
 pub mod readability;
+pub mod semantic;
 pub mod stylistic;
 pub mod syntactic;
-pub mod naive_bayes;
-pub mod bert_semantic;
 
 // Re-export all analyzers
+pub use bert_semantic::*;
+pub use naive_bayes::*;
 pub use readability::*;
 pub use stylistic::*;
 pub use syntactic::*;
-pub use naive_bayes::*;
-pub use bert_semantic::*;
 
 use crate::diff::{ChangeCategory, DiffOperation, DiffResult};
 
@@ -23,13 +23,13 @@ use crate::diff::{ChangeCategory, DiffOperation, DiffResult};
 pub struct ClassificationResult {
     /// The assigned category
     pub category: ChangeCategory,
-    
+
     /// Confidence score (0.0 to 1.0)
     pub confidence: f64,
-    
+
     /// Alternative categories with their scores
     pub alternatives: Vec<(ChangeCategory, f64)>,
-    
+
     /// Explanation or reasoning
     pub explanation: String,
 }
@@ -60,16 +60,20 @@ pub trait ChangeClassifier: Send + Sync {
     fn classify_operation(&self, operation: &DiffOperation) -> ClassificationResult;
 
     /// Classify a single operation with cached metrics (more efficient)
-    fn classify_operation_with_metrics(&self, operation: &DiffOperation, metrics: Option<&crate::metrics::PairwiseMetrics>) -> ClassificationResult {
+    fn classify_operation_with_metrics(
+        &self,
+        operation: &DiffOperation,
+        _metrics: Option<&crate::metrics::PairwiseMetrics>,
+    ) -> ClassificationResult {
         // Default implementation ignores metrics
         self.classify_operation(operation)
     }
 
     /// Classify an entire diff (default: aggregate individual operations)
     fn classify_diff(&self, diff: &DiffResult) -> ClassificationResult {
-        let mut category_scores: std::collections::HashMap<String, f64> = 
+        let mut category_scores: std::collections::HashMap<String, f64> =
             std::collections::HashMap::new();
-        
+
         for op in &diff.operations {
             let classification = self.classify_operation(op);
             let key = format!("{:?}", classification.category);
@@ -77,7 +81,8 @@ pub trait ChangeClassifier: Send + Sync {
         }
 
         // Find dominant category
-        let (dominant_cat, score) = category_scores.iter()
+        let (dominant_cat, score) = category_scores
+            .iter()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(k, v)| (k.clone(), *v))
             .unwrap_or_else(|| ("Unknown".to_string(), 0.0));
@@ -159,13 +164,12 @@ impl RuleBasedClassifier {
 
     /// Check if change is primarily punctuation
     fn is_punctuation_change(&self, orig: &str, modified: &str) -> bool {
-        let orig_no_punct: String = orig.chars()
+        let orig_no_punct: String = orig.chars().filter(|c| !c.is_ascii_punctuation()).collect();
+        let mod_no_punct: String = modified
+            .chars()
             .filter(|c| !c.is_ascii_punctuation())
             .collect();
-        let mod_no_punct: String = modified.chars()
-            .filter(|c| !c.is_ascii_punctuation())
-            .collect();
-        
+
         orig_no_punct.to_lowercase() == mod_no_punct.to_lowercase()
     }
 
@@ -196,11 +200,9 @@ impl RuleBasedClassifier {
 
     /// Compute word-level similarity
     fn word_similarity(&self, orig: &str, modified: &str) -> f64 {
-        let orig_words: std::collections::HashSet<_> = orig
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
-        
+        let orig_words: std::collections::HashSet<_> =
+            orig.split_whitespace().map(|w| w.to_lowercase()).collect();
+
         let mod_words: std::collections::HashSet<_> = modified
             .split_whitespace()
             .map(|w| w.to_lowercase())
@@ -277,36 +279,36 @@ impl ChangeClassifier for RuleBasedClassifier {
             (
                 ChangeCategory::Syntactic,
                 0.8,
-                "Very high character similarity suggests minor corrections"
+                "Very high character similarity suggests minor corrections",
             )
         } else if word_sim >= 0.8 {
             (
                 ChangeCategory::Stylistic,
                 0.75,
-                "High word-level similarity suggests stylistic refinement"
+                "High word-level similarity suggests stylistic refinement",
             )
         } else if word_sim >= 0.5 {
             (
                 ChangeCategory::Stylistic,
                 0.6,
-                "Moderate similarity suggests stylistic change"
+                "Moderate similarity suggests stylistic change",
             )
         } else if word_sim >= 0.3 {
             (
                 ChangeCategory::Semantic,
                 0.7,
-                "Low-moderate similarity suggests semantic change"
+                "Low-moderate similarity suggests semantic change",
             )
         } else {
             (
                 ChangeCategory::Semantic,
                 0.85,
-                "Low similarity suggests substantial semantic change"
+                "Low similarity suggests substantial semantic change",
             )
         };
 
-        let mut result = ClassificationResult::new(category, confidence)
-            .with_explanation(explanation);
+        let mut result =
+            ClassificationResult::new(category, confidence).with_explanation(explanation);
 
         // Add alternatives if confidence is not very high
         if confidence < 0.9 {
@@ -363,7 +365,8 @@ impl ChangeClassifier for EnsembleClassifier {
         }
 
         // Get classifications from all classifiers
-        let classifications: Vec<ClassificationResult> = self.classifiers
+        let classifications: Vec<ClassificationResult> = self
+            .classifiers
             .iter()
             .map(|c| c.classify_operation(operation))
             .collect();
@@ -371,16 +374,17 @@ impl ChangeClassifier for EnsembleClassifier {
         match self.strategy.as_str() {
             "vote" => {
                 // Count votes for each category
-                let mut votes: std::collections::HashMap<String, usize> = 
+                let mut votes: std::collections::HashMap<String, usize> =
                     std::collections::HashMap::new();
-                
+
                 for class in &classifications {
                     let key = format!("{:?}", class.category);
                     *votes.entry(key).or_insert(0) += 1;
                 }
 
                 // Find winner
-                let (winner_key, winner_count) = votes.iter()
+                let (winner_key, winner_count) = votes
+                    .iter()
                     .max_by_key(|(_, count)| *count)
                     .map(|(k, v)| (k.clone(), *v))
                     .unwrap();
@@ -396,21 +400,28 @@ impl ChangeClassifier for EnsembleClassifier {
 
                 let confidence = winner_count as f64 / self.classifiers.len() as f64;
 
-                ClassificationResult::new(category, confidence)
-                    .with_explanation(format!("Ensemble vote: {} out of {}", winner_count, self.classifiers.len()))
+                ClassificationResult::new(category, confidence).with_explanation(format!(
+                    "Ensemble vote: {} out of {}",
+                    winner_count,
+                    self.classifiers.len()
+                ))
             }
             "average" => {
                 // Average confidence scores per category
-                let mut category_scores: std::collections::HashMap<String, Vec<f64>> = 
+                let mut category_scores: std::collections::HashMap<String, Vec<f64>> =
                     std::collections::HashMap::new();
 
                 for class in &classifications {
                     let key = format!("{:?}", class.category);
-                    category_scores.entry(key).or_default().push(class.confidence);
+                    category_scores
+                        .entry(key)
+                        .or_default()
+                        .push(class.confidence);
                 }
 
                 // Compute average for each category
-                let (winner_key, avg_confidence) = category_scores.iter()
+                let (winner_key, avg_confidence) = category_scores
+                    .iter()
                     .map(|(k, scores)| {
                         let avg = scores.iter().sum::<f64>() / scores.len() as f64;
                         (k.clone(), avg)
@@ -430,7 +441,7 @@ impl ChangeClassifier for EnsembleClassifier {
                 ClassificationResult::new(category, avg_confidence)
                     .with_explanation("Ensemble average of classifier confidences")
             }
-            _ => ClassificationResult::new(ChangeCategory::Unknown, 0.0)
+            _ => ClassificationResult::new(ChangeCategory::Unknown, 0.0),
         }
     }
 
@@ -451,12 +462,12 @@ mod tests {
     #[test]
     fn test_rule_based_classifier() {
         let classifier = RuleBasedClassifier::new();
-        
+
         // Test case change
         let op = DiffOperation::new(crate::diff::EditType::Modify)
             .with_original("Hello".to_string(), CharSpan::new(0, 5))
             .with_modified("hello".to_string(), CharSpan::new(0, 5));
-        
+
         let result = classifier.classify_operation(&op);
         assert!(matches!(result.category, ChangeCategory::Formatting));
     }
@@ -464,11 +475,11 @@ mod tests {
     #[test]
     fn test_semantic_classification() {
         let classifier = RuleBasedClassifier::new();
-        
+
         let op = DiffOperation::new(crate::diff::EditType::Modify)
             .with_original("cat".to_string(), CharSpan::new(0, 3))
             .with_modified("dog".to_string(), CharSpan::new(0, 3));
-        
+
         let result = classifier.classify_operation(&op);
         assert!(matches!(result.category, ChangeCategory::Semantic));
     }

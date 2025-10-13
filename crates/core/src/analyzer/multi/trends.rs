@@ -1,6 +1,6 @@
 //! Temporal trend analysis for diff sequences
 
-use crate::analyzers::{AnalysisResult, MultiDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, MultiDiffAnalyzer};
 use crate::diff::DiffResult;
 
 /// Analyzes trends over time (requires diffs to be in chronological order)
@@ -66,12 +66,11 @@ impl MultiDiffAnalyzer for TemporalTrendAnalyzer {
         }
 
         // Analyze trends in key metrics
-        let similarities: Vec<f64> = diffs.iter()
-            .map(|d| d.semantic_similarity)
-            .collect();
+        let similarities: Vec<f64> = diffs.iter().map(|d| d.semantic_similarity).collect();
         let similarity_trend = self.detect_trend(&similarities);
 
-        let changes: Vec<f64> = diffs.iter()
+        let changes: Vec<f64> = diffs
+            .iter()
             .map(|d| d.statistics.change_percentage)
             .collect();
         let change_trend = self.detect_trend(&changes);
@@ -79,14 +78,8 @@ impl MultiDiffAnalyzer for TemporalTrendAnalyzer {
         result.add_metadata("similarity_trend", similarity_trend);
         result.add_metadata("change_magnitude_trend", change_trend);
 
-        result.add_insight(format!(
-            "Semantic similarity trend: {}",
-            similarity_trend
-        ));
-        result.add_insight(format!(
-            "Change magnitude trend: {}",
-            change_trend
-        ));
+        result.add_insight(format!("Semantic similarity trend: {}", similarity_trend));
+        result.add_insight(format!("Change magnitude trend: {}", change_trend));
 
         // Compute moving averages
         let ma_window = (diffs.len() / 3).max(3);
@@ -98,13 +91,9 @@ impl MultiDiffAnalyzer for TemporalTrendAnalyzer {
 
         // Detect significant changes
         if similarity_trend == "decreasing" {
-            result.add_insight(
-                "User edits are becoming increasingly substantial over time"
-            );
+            result.add_insight("User edits are becoming increasingly substantial over time");
         } else if similarity_trend == "increasing" {
-            result.add_insight(
-                "User edits are becoming more conservative over time"
-            );
+            result.add_insight("User edits are becoming more conservative over time");
         }
 
         result

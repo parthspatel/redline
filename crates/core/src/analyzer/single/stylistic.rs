@@ -1,6 +1,6 @@
 //! Stylistic analysis - word length, sentence structure, vocabulary
 
-use crate::analyzers::{AnalysisResult, SingleDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::{ChangeCategory, DiffResult};
 
 /// Analyzes stylistic changes in the text
@@ -45,10 +45,7 @@ impl StylisticAnalyzer {
     }
 
     fn lexical_diversity(&self, text: &str) -> f64 {
-        let words: Vec<String> = text
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
+        let words: Vec<String> = text.split_whitespace().map(|w| w.to_lowercase()).collect();
 
         if words.is_empty() {
             return 0.0;
@@ -100,7 +97,9 @@ impl SingleDiffAnalyzer for StylisticAnalyzer {
         result.add_metric("lexical_diversity_change", mod_ld - orig_ld);
 
         // Count stylistic changes
-        let stylistic_changes = diff.operations.iter()
+        let stylistic_changes = diff
+            .operations
+            .iter()
             .filter(|op| matches!(op.category, ChangeCategory::Stylistic))
             .count();
 
@@ -170,8 +169,14 @@ impl SingleDiffAnalyzer for WhitespaceRatioDiffAnalyzer {
         // Use cached metrics if available
         let metrics = diff.get_metrics_ref();
         result.add_metric("whitespace_ratio_diff", metrics.whitespace_ratio_diff);
-        result.add_metric("original_whitespace_ratio", metrics.original.whitespace_ratio);
-        result.add_metric("modified_whitespace_ratio", metrics.modified.whitespace_ratio);
+        result.add_metric(
+            "original_whitespace_ratio",
+            metrics.original.whitespace_ratio,
+        );
+        result.add_metric(
+            "modified_whitespace_ratio",
+            metrics.modified.whitespace_ratio,
+        );
 
         result
     }

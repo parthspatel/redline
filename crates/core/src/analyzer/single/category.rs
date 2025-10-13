@@ -1,6 +1,6 @@
 //! Category distribution and edit intent analysis
 
-use crate::analyzers::{AnalysisResult, SingleDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::{ChangeCategory, DiffResult, EditType};
 use std::collections::HashMap;
 
@@ -45,20 +45,17 @@ impl SingleDiffAnalyzer for CategoryDistributionAnalyzer {
 
             result.add_metric(
                 format!("{}_percentage", category.to_lowercase()),
-                percentage
+                percentage,
             );
-            result.add_metric(
-                format!("{}_count", category.to_lowercase()),
-                *count as f64
-            );
+            result.add_metric(format!("{}_count", category.to_lowercase()), *count as f64);
         }
 
         result.add_metric("total_changes", total_changes as f64);
 
         // Find dominant category
-        if let Some((dominant_cat, dominant_count)) = category_counts.iter()
-            .max_by_key(|(_, count)| *count) {
-
+        if let Some((dominant_cat, dominant_count)) =
+            category_counts.iter().max_by_key(|(_, count)| *count)
+        {
             let percentage = (*dominant_count as f64 / total_changes as f64) * 100.0;
             result.add_metadata("dominant_category", dominant_cat);
             result.add_insight(format!(
@@ -114,7 +111,8 @@ impl EditIntentClassifier {
 
         // Check for clarification intent
         if diff.statistics.modifications > diff.statistics.insertions
-            && diff.semantic_similarity > 0.8 {
+            && diff.semantic_similarity > 0.8
+        {
             intents.push("clarification".to_string());
         }
 
@@ -129,7 +127,9 @@ impl EditIntentClassifier {
         }
 
         // Check for correction intent
-        let syntactic_changes = diff.operations.iter()
+        let syntactic_changes = diff
+            .operations
+            .iter()
             .filter(|op| matches!(op.category, ChangeCategory::Syntactic))
             .count();
 
@@ -138,7 +138,9 @@ impl EditIntentClassifier {
         }
 
         // Check for reformatting intent
-        let formatting_changes = diff.operations.iter()
+        let formatting_changes = diff
+            .operations
+            .iter()
             .filter(|op| matches!(op.category, ChangeCategory::Formatting))
             .count();
 
@@ -147,7 +149,9 @@ impl EditIntentClassifier {
         }
 
         // Check for stylistic refinement
-        let stylistic_changes = diff.operations.iter()
+        let stylistic_changes = diff
+            .operations
+            .iter()
             .filter(|op| matches!(op.category, ChangeCategory::Stylistic))
             .count();
 
@@ -181,8 +185,10 @@ impl SingleDiffAnalyzer for EditIntentClassifier {
             result.add_insight(format!("Detected intent: {}", intent));
         }
 
-        result.add_metadata("primary_intent",
-            intents.first().unwrap_or(&"unknown".to_string()));
+        result.add_metadata(
+            "primary_intent",
+            intents.first().unwrap_or(&"unknown".to_string()),
+        );
 
         if intents.is_empty() {
             result.add_insight("No clear edit intent detected");

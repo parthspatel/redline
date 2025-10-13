@@ -1,6 +1,6 @@
 //! Aggregate statistics analysis across multiple diffs
 
-use crate::analyzers::{AnalysisResult, MultiDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, MultiDiffAnalyzer};
 use crate::diff::DiffResult;
 
 /// Computes aggregate statistics across multiple diffs
@@ -41,12 +41,18 @@ impl MultiDiffAnalyzer for AggregateStatisticsAnalyzer {
         result.add_metric("avg_insertions", avg_insertions);
         result.add_metric("avg_deletions", avg_deletions);
         result.add_metric("avg_modifications", avg_modifications);
-        result.add_metric("total_changes", (total_insertions + total_deletions + total_modifications) as f64);
+        result.add_metric(
+            "total_changes",
+            (total_insertions + total_deletions + total_modifications) as f64,
+        );
 
         // Semantic similarity statistics
         let similarities: Vec<f64> = diffs.iter().map(|d| d.semantic_similarity).collect();
         let avg_similarity = similarities.iter().sum::<f64>() / similarities.len() as f64;
-        let max_similarity = similarities.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_similarity = similarities
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let min_similarity = similarities.iter().cloned().fold(f64::INFINITY, f64::min);
 
         result.add_metric("avg_semantic_similarity", avg_similarity);
@@ -54,7 +60,10 @@ impl MultiDiffAnalyzer for AggregateStatisticsAnalyzer {
         result.add_metric("min_semantic_similarity", min_similarity);
 
         // Change percentage statistics
-        let change_pcts: Vec<f64> = diffs.iter().map(|d| d.statistics.change_percentage).collect();
+        let change_pcts: Vec<f64> = diffs
+            .iter()
+            .map(|d| d.statistics.change_percentage)
+            .collect();
         let avg_change_pct = change_pcts.iter().sum::<f64>() / change_pcts.len() as f64;
 
         result.add_metric("avg_change_percentage", avg_change_pct * 100.0);

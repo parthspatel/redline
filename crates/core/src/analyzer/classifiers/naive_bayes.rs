@@ -43,7 +43,11 @@ pub trait FeatureExtractor: Send + Sync {
     fn extract(&self, operation: &DiffOperation) -> FeatureVector;
 
     /// Extract features using cached metrics (more efficient)
-    fn extract_with_metrics(&self, operation: &DiffOperation, metrics: Option<&crate::metrics::PairwiseMetrics>) -> FeatureVector {
+    fn extract_with_metrics(
+        &self,
+        operation: &DiffOperation,
+        _metrics: Option<&crate::metrics::PairwiseMetrics>,
+    ) -> FeatureVector {
         // Default implementation falls back to regular extract
         self.extract(operation)
     }
@@ -65,7 +69,7 @@ impl StandardFeatureExtractor {
         let len1 = s1.len();
         let len2 = s2.len();
         let max_len = len1.max(len2);
-        
+
         if max_len == 0 {
             return 1.0;
         }
@@ -99,15 +103,11 @@ impl StandardFeatureExtractor {
     }
 
     fn word_overlap(&self, s1: &str, s2: &str) -> f64 {
-        let words1: std::collections::HashSet<_> = s1
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
-        
-        let words2: std::collections::HashSet<_> = s2
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
+        let words1: std::collections::HashSet<_> =
+            s1.split_whitespace().map(|w| w.to_lowercase()).collect();
+
+        let words2: std::collections::HashSet<_> =
+            s2.split_whitespace().map(|w| w.to_lowercase()).collect();
 
         if words1.is_empty() && words2.is_empty() {
             return 1.0;
@@ -154,15 +154,14 @@ impl StandardFeatureExtractor {
         }
 
         // Count sentences (simple approximation: . ! ?)
-        let sentence_count = s.chars()
+        let sentence_count = s
+            .chars()
             .filter(|c| *c == '.' || *c == '!' || *c == '?')
             .count()
             .max(1);
 
         // Count syllables (simple approximation: count vowel groups)
-        let syllable_count: usize = words.iter()
-            .map(|word| self.count_syllables(word))
-            .sum();
+        let syllable_count: usize = words.iter().map(|word| self.count_syllables(word)).sum();
 
         let avg_syllables_per_word = syllable_count as f64 / word_count as f64;
         let avg_words_per_sentence = word_count as f64 / sentence_count as f64;
@@ -201,9 +200,9 @@ impl StandardFeatureExtractor {
 
     fn stopword_ratio(&self, s: &str) -> f64 {
         const STOPWORDS: &[&str] = &[
-            "a", "an", "and", "are", "as", "at", "be", "been", "but", "by",
-            "for", "from", "has", "have", "he", "in", "is", "it", "its",
-            "of", "on", "or", "that", "the", "to", "was", "were", "will", "with"
+            "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "for", "from", "has",
+            "have", "he", "in", "is", "it", "its", "of", "on", "or", "that", "the", "to", "was",
+            "were", "will", "with",
         ];
 
         let words: Vec<&str> = s.split_whitespace().collect();
@@ -213,7 +212,8 @@ impl StandardFeatureExtractor {
             return 0.0;
         }
 
-        let stopword_count = words.iter()
+        let stopword_count = words
+            .iter()
             .filter(|w| STOPWORDS.contains(&w.to_lowercase().as_str()))
             .count();
 
@@ -230,7 +230,9 @@ impl StandardFeatureExtractor {
     }
 
     fn contains_negation(&self, s: &str) -> bool {
-        const NEGATION_WORDS: &[&str] = &["not", "no", "never", "neither", "none", "nobody", "nothing", "nowhere"];
+        const NEGATION_WORDS: &[&str] = &[
+            "not", "no", "never", "neither", "none", "nobody", "nothing", "nowhere",
+        ];
 
         let lower = s.to_lowercase();
 
@@ -258,7 +260,11 @@ impl FeatureExtractor for StandardFeatureExtractor {
         self.extract_with_metrics(operation, None)
     }
 
-    fn extract_with_metrics(&self, operation: &DiffOperation, metrics: Option<&crate::metrics::PairwiseMetrics>) -> FeatureVector {
+    fn extract_with_metrics(
+        &self,
+        operation: &DiffOperation,
+        metrics: Option<&crate::metrics::PairwiseMetrics>,
+    ) -> FeatureVector {
         let mut features = FeatureVector::new();
 
         let orig_text = operation.original_text.as_deref().unwrap_or("");
@@ -274,23 +280,45 @@ impl FeatureExtractor for StandardFeatureExtractor {
             // Length features (from cache)
             features.add_feature("orig_length", m.original.char_count as f64);
             features.add_feature("mod_length", m.modified.char_count as f64);
-            features.add_feature("length_diff", (m.modified.char_count as f64 - m.original.char_count as f64).abs());
+            features.add_feature(
+                "length_diff",
+                (m.modified.char_count as f64 - m.original.char_count as f64).abs(),
+            );
 
             // Edit type features (one-hot encoding)
-            let is_insert = if matches!(operation.edit_type, crate::diff::EditType::Insert) { 1.0 } else { 0.0 };
-            let is_delete = if matches!(operation.edit_type, crate::diff::EditType::Delete) { 1.0 } else { 0.0 };
-            let is_modify = if matches!(operation.edit_type, crate::diff::EditType::Modify) { 1.0 } else { 0.0 };
+            let is_insert = if matches!(operation.edit_type, crate::diff::EditType::Insert) {
+                1.0
+            } else {
+                0.0
+            };
+            let is_delete = if matches!(operation.edit_type, crate::diff::EditType::Delete) {
+                1.0
+            } else {
+                0.0
+            };
+            let is_modify = if matches!(operation.edit_type, crate::diff::EditType::Modify) {
+                1.0
+            } else {
+                0.0
+            };
 
             features.add_feature("is_insert", is_insert);
             features.add_feature("is_delete", is_delete);
             features.add_feature("is_modify", is_modify);
 
             // Case change feature
-            let case_changed = if orig_text.to_lowercase() == mod_text.to_lowercase() { 1.0 } else { 0.0 };
+            let case_changed = if orig_text.to_lowercase() == mod_text.to_lowercase() {
+                1.0
+            } else {
+                0.0
+            };
             features.add_feature("case_only_change", case_changed);
 
             // Punctuation features (from cache)
-            features.add_feature("punct_diff", (m.modified.punctuation_count as f64 - m.original.punctuation_count as f64).abs());
+            features.add_feature(
+                "punct_diff",
+                (m.modified.punctuation_count as f64 - m.original.punctuation_count as f64).abs(),
+            );
 
             // NEW FEATURES (from cache!):
             features.add_feature("readability_score_diff", m.readability_diff);
@@ -300,7 +328,10 @@ impl FeatureExtractor for StandardFeatureExtractor {
             features.add_feature("stopword_ratio", avg_stopword_ratio);
 
             features.add_feature("whitespace_ratio_change", m.whitespace_ratio_diff);
-            features.add_feature("negation_changed", if m.negation_changed { 1.0 } else { 0.0 });
+            features.add_feature(
+                "negation_changed",
+                if m.negation_changed { 1.0 } else { 0.0 },
+            );
         } else {
             // Fallback: compute on-the-fly (slower)
             features.add_feature("char_similarity", self.char_similarity(orig_text, mod_text));
@@ -309,26 +340,54 @@ impl FeatureExtractor for StandardFeatureExtractor {
 
             features.add_feature("orig_length", orig_text.len() as f64);
             features.add_feature("mod_length", mod_text.len() as f64);
-            features.add_feature("length_diff", (mod_text.len() as f64 - orig_text.len() as f64).abs());
+            features.add_feature(
+                "length_diff",
+                (mod_text.len() as f64 - orig_text.len() as f64).abs(),
+            );
 
-            let is_insert = if matches!(operation.edit_type, crate::diff::EditType::Insert) { 1.0 } else { 0.0 };
-            let is_delete = if matches!(operation.edit_type, crate::diff::EditType::Delete) { 1.0 } else { 0.0 };
-            let is_modify = if matches!(operation.edit_type, crate::diff::EditType::Modify) { 1.0 } else { 0.0 };
+            let is_insert = if matches!(operation.edit_type, crate::diff::EditType::Insert) {
+                1.0
+            } else {
+                0.0
+            };
+            let is_delete = if matches!(operation.edit_type, crate::diff::EditType::Delete) {
+                1.0
+            } else {
+                0.0
+            };
+            let is_modify = if matches!(operation.edit_type, crate::diff::EditType::Modify) {
+                1.0
+            } else {
+                0.0
+            };
 
             features.add_feature("is_insert", is_insert);
             features.add_feature("is_delete", is_delete);
             features.add_feature("is_modify", is_modify);
 
-            let case_changed = if orig_text.to_lowercase() == mod_text.to_lowercase() { 1.0 } else { 0.0 };
+            let case_changed = if orig_text.to_lowercase() == mod_text.to_lowercase() {
+                1.0
+            } else {
+                0.0
+            };
             features.add_feature("case_only_change", case_changed);
 
-            let orig_punct = orig_text.chars().filter(|c| c.is_ascii_punctuation()).count() as f64;
-            let mod_punct = mod_text.chars().filter(|c| c.is_ascii_punctuation()).count() as f64;
+            let orig_punct = orig_text
+                .chars()
+                .filter(|c| c.is_ascii_punctuation())
+                .count() as f64;
+            let mod_punct = mod_text
+                .chars()
+                .filter(|c| c.is_ascii_punctuation())
+                .count() as f64;
             features.add_feature("punct_diff", (mod_punct - orig_punct).abs());
 
             let orig_readability = self.flesch_reading_ease(orig_text);
             let mod_readability = self.flesch_reading_ease(mod_text);
-            features.add_feature("readability_score_diff", (mod_readability - orig_readability).abs());
+            features.add_feature(
+                "readability_score_diff",
+                (mod_readability - orig_readability).abs(),
+            );
 
             let orig_word_count = self.count_words(orig_text) as f64;
             let mod_word_count = self.count_words(mod_text) as f64;
@@ -341,11 +400,18 @@ impl FeatureExtractor for StandardFeatureExtractor {
 
             let orig_ws_ratio = self.whitespace_ratio(orig_text);
             let mod_ws_ratio = self.whitespace_ratio(mod_text);
-            features.add_feature("whitespace_ratio_change", (mod_ws_ratio - orig_ws_ratio).abs());
+            features.add_feature(
+                "whitespace_ratio_change",
+                (mod_ws_ratio - orig_ws_ratio).abs(),
+            );
 
             let orig_has_negation = self.contains_negation(orig_text);
             let mod_has_negation = self.contains_negation(mod_text);
-            let negation_changed = if orig_has_negation != mod_has_negation { 1.0 } else { 0.0 };
+            let negation_changed = if orig_has_negation != mod_has_negation {
+                1.0
+            } else {
+                0.0
+            };
             features.add_feature("negation_changed", negation_changed);
         }
 
@@ -422,7 +488,8 @@ impl NaiveBayesClassifier {
         for sample in samples {
             let cat_key = format!("{:?}", sample.label);
             *category_counts.entry(cat_key.clone()).or_insert(0) += 1;
-            category_features.entry(cat_key)
+            category_features
+                .entry(cat_key)
                 .or_default()
                 .push(sample.features.features.clone());
         }
@@ -430,7 +497,8 @@ impl NaiveBayesClassifier {
         // Compute priors
         let total_samples = samples.len() as f64;
         for (category, count) in &category_counts {
-            self.priors.insert(category.clone(), *count as f64 / total_samples);
+            self.priors
+                .insert(category.clone(), *count as f64 / total_samples);
         }
 
         // Compute feature statistics (mean and std dev) per category
@@ -439,14 +507,14 @@ impl NaiveBayesClassifier {
             let mut stats = Vec::new();
 
             for feature_idx in 0..n_features {
-                let values: Vec<f64> = features_list.iter()
+                let values: Vec<f64> = features_list
+                    .iter()
                     .map(|features| features[feature_idx])
                     .collect();
 
                 let mean = values.iter().sum::<f64>() / values.len() as f64;
-                let variance = values.iter()
-                    .map(|v| (v - mean).powi(2))
-                    .sum::<f64>() / values.len() as f64;
+                let variance =
+                    values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
                 let std_dev = variance.sqrt().max(1e-6); // Avoid division by zero
 
                 stats.push((mean, std_dev));
@@ -521,9 +589,15 @@ impl ChangeClassifier for NaiveBayesClassifier {
         self.classify_operation_with_metrics(operation, None)
     }
 
-    fn classify_operation_with_metrics(&self, operation: &DiffOperation, metrics: Option<&crate::metrics::PairwiseMetrics>) -> ClassificationResult {
+    fn classify_operation_with_metrics(
+        &self,
+        operation: &DiffOperation,
+        metrics: Option<&crate::metrics::PairwiseMetrics>,
+    ) -> ClassificationResult {
         // Use cached metrics if available (much faster!)
-        let features = self.feature_extractor.extract_with_metrics(operation, metrics);
+        let features = self
+            .feature_extractor
+            .extract_with_metrics(operation, metrics);
         let (category, confidence) = self.predict(&features);
 
         ClassificationResult::new(category, confidence)
@@ -588,13 +662,13 @@ mod tests {
     #[test]
     fn test_feature_extraction() {
         let extractor = StandardFeatureExtractor::new();
-        
+
         let op = DiffOperation::new(crate::diff::EditType::Modify)
             .with_original("hello".to_string(), CharSpan::new(0, 5))
             .with_modified("world".to_string(), CharSpan::new(0, 5));
-        
+
         let features = extractor.extract(&op);
-        
+
         assert!(features.features.len() > 0);
         assert_eq!(features.features.len(), features.feature_names.len());
     }
@@ -609,12 +683,10 @@ mod tests {
             .with_original("Hello".to_string(), CharSpan::new(0, 5))
             .with_modified("hello".to_string(), CharSpan::new(0, 5));
 
-        let samples = vec![
-            TrainingSample::new(
-                extractor.extract(&op1),
-                ChangeCategory::Formatting
-            ),
-        ];
+        let samples = vec![TrainingSample::new(
+            extractor.extract(&op1),
+            ChangeCategory::Formatting,
+        )];
 
         classifier.train(&samples);
         assert!(classifier.trained);
@@ -627,7 +699,10 @@ mod tests {
         // Test readability_score_diff
         let op1 = DiffOperation::new(crate::diff::EditType::Modify)
             .with_original("The cat sat on the mat.".to_string(), CharSpan::new(0, 23))
-            .with_modified("The feline reclined upon the textile floor covering.".to_string(), CharSpan::new(0, 53));
+            .with_modified(
+                "The feline reclined upon the textile floor covering.".to_string(),
+                CharSpan::new(0, 53),
+            );
 
         let features1 = extractor.extract(&op1);
         assert_eq!(features1.features.len(), 16); // 11 old + 5 new features
@@ -638,7 +713,11 @@ mod tests {
             .with_modified("hello world".to_string(), CharSpan::new(0, 11));
 
         let features2 = extractor.extract(&op2);
-        let word_count_diff_idx = features2.feature_names.iter().position(|n| n == "word_count_diff").unwrap();
+        let word_count_diff_idx = features2
+            .feature_names
+            .iter()
+            .position(|n| n == "word_count_diff")
+            .unwrap();
         assert_eq!(features2.features[word_count_diff_idx], 1.0);
 
         // Test negation_changed
@@ -647,7 +726,11 @@ mod tests {
             .with_modified("I don't like this.".to_string(), CharSpan::new(0, 18));
 
         let features3 = extractor.extract(&op3);
-        let negation_idx = features3.feature_names.iter().position(|n| n == "negation_changed").unwrap();
+        let negation_idx = features3
+            .feature_names
+            .iter()
+            .position(|n| n == "negation_changed")
+            .unwrap();
         assert_eq!(features3.features[negation_idx], 1.0);
 
         // Test whitespace_ratio_change
@@ -656,7 +739,11 @@ mod tests {
             .with_modified("h e l l o".to_string(), CharSpan::new(0, 9));
 
         let features4 = extractor.extract(&op4);
-        let ws_idx = features4.feature_names.iter().position(|n| n == "whitespace_ratio_change").unwrap();
+        let ws_idx = features4
+            .feature_names
+            .iter()
+            .position(|n| n == "whitespace_ratio_change")
+            .unwrap();
         assert!(features4.features[ws_idx] > 0.0);
     }
 }

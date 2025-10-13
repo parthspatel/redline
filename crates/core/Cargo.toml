@@ -39,7 +39,7 @@ linfa-clustering = { version = "0.8.0", optional = true }
 
 [features]
 default = []
-bert = ["rust-bert","tch", "ndarray"]
+bert = ["rust-bert", "tch", "ndarray"]
 ml-extras = ["ndarray", "linfa", "linfa-clustering"]
 full = ["bert", "ml-extras"]
 

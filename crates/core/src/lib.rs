@@ -30,24 +30,24 @@
 //! let diff = engine.diff("Hello World", "Hello Rust");
 //! ```
 
+pub mod algorithm;
+pub mod analyzer;
 pub mod config;
+pub mod diff;
 pub mod engine;
+pub mod execution;
 pub mod mapping;
+pub mod metrics;
 pub mod normalizers;
 pub mod pipeline;
 pub mod tokenizers;
-pub mod diff;
-pub mod algorithms;
-pub mod analyzers;
-pub mod metrics;
-pub mod execution;
 
 // Re-export main types
 pub use config::{DiffAlgorithm, DiffConfig};
+pub use diff::{ChangeCategory, DiffOperation, DiffResult, EditType};
 pub use engine::DiffEngine;
 pub use pipeline::{NormalizationLayer, TextPipeline};
-pub use diff::{ChangeCategory, DiffOperation, DiffResult, EditType};
-// pub use analyzers::{AnalysisResult, AnalysisReport};
+// pub use analyzer::{AnalysisResult, AnalysisReport};
 
 /// Main entry point for computing diffs between two strings
 ///
@@ -88,11 +88,8 @@ mod tests {
     #[test]
     fn test_with_normalization() {
         let config = DiffConfig::default()
-            .with_pipeline(
-                TextPipeline::new()
-                    .add_normalizer(Box::new(normalizers::Lowercase))
-            );
-        
+            .with_pipeline(TextPipeline::new().add_normalizer(Box::new(normalizers::Lowercase)));
+
         let result = compute_diff("Hello World", "HELLO WORLD", Some(config));
         assert!(result.semantic_similarity > 0.95);
     }

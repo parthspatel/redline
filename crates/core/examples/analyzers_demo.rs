@@ -4,28 +4,22 @@ use redline_core::normalizers::WhitespaceNormalizer;
 use redline_core::tokenizers::WordTokenizer;
 use redline_core::{DiffConfig, DiffEngine, TextPipeline};
 
-use redline_core::analyzers::multi::{
-    AggregateStatisticsAnalyzer,
-    BehaviorClusteringAnalyzer,
-    PatternDetectionAnalyzer,
+use redline_core::analyzer::multi::{
+    AggregateStatisticsAnalyzer, BehaviorClusteringAnalyzer, PatternDetectionAnalyzer,
     TemporalTrendAnalyzer,
 };
-use redline_core::analyzers::selectors::{DiffSelector, EditTypeSelector, ParagraphSelector};
+use redline_core::analyzer::selectors::{DiffSelector, EditTypeSelector, ParagraphSelector};
 // Import analyzers
-use redline_core::analyzers::single::{
-    CategoryDistributionAnalyzer,
-    EditIntentClassifier,
-    ReadabilityAnalyzer,
-    SemanticSimilarityAnalyzer,
-    StylisticAnalyzer,
+use redline_core::analyzer::single::{
+    CategoryDistributionAnalyzer, EditIntentClassifier, ReadabilityAnalyzer,
+    SemanticSimilarityAnalyzer, StylisticAnalyzer,
 };
-use redline_core::analyzers::{AnalysisReport, MultiDiffAnalyzer, SingleDiffAnalyzer};
+use redline_core::analyzer::{AnalysisReport, MultiDiffAnalyzer, SingleDiffAnalyzer};
 
 // Import classifiers
-use redline_core::analyzers::classifiers::{ChangeClassifier, RuleBasedClassifier};
+use redline_core::analyzer::classifiers::{ChangeClassifier, RuleBasedClassifier};
 
 const LINE: &str = "----------------------------------------";
-
 
 fn main() {
     println!("=== Text Diff Analyzers & Classifiers Demo ===\n");
@@ -74,12 +68,12 @@ fn example_single_diff_analysis() {
     for analyzer in &analyzers {
         println!("\n📊 {} Analysis:", analyzer.name());
         let result = analyzer.analyze(&diff);
-        
+
         // Print key metrics
         for (metric, value) in &result.metrics {
             println!("  • {}: {:.2}", metric, value);
         }
-        
+
         // Print insights
         if !result.insights.is_empty() {
             println!("  Insights:");
@@ -87,12 +81,15 @@ fn example_single_diff_analysis() {
                 println!("    - {}", insight);
             }
         }
-        
+
         report.add_result(result);
     }
 
     report.compute_summary();
-    println!("\n✅ Analysis complete! {} analyzers run.\n", report.results.len());
+    println!(
+        "\n✅ Analysis complete! {} analyzers run.\n",
+        report.results.len()
+    );
 }
 
 fn example_multi_diff_analysis() {
@@ -104,13 +101,20 @@ fn example_multi_diff_analysis() {
     // Simulate multiple user edits
     let edits = vec![
         ("AI generated content.", "Human edited content."),
-        ("The system works correctly.", "The system functions properly."),
+        (
+            "The system works correctly.",
+            "The system functions properly.",
+        ),
         ("Hello world!", "Hello world."),
         ("This is a TEST.", "This is a test."),
-        ("Quick summary here.", "Here's a detailed explanation of the topic with multiple sentences."),
+        (
+            "Quick summary here.",
+            "Here's a detailed explanation of the topic with multiple sentences.",
+        ),
     ];
 
-    let diffs: Vec<_> = edits.iter()
+    let diffs: Vec<_> = edits
+        .iter()
         .map(|(orig, modified)| engine.diff(orig, modified))
         .collect();
 
@@ -129,12 +133,12 @@ fn example_multi_diff_analysis() {
     for analyzer in &analyzers {
         println!("\n📈 {} Analysis:", analyzer.name());
         let result = analyzer.analyze(&diff_refs);
-        
+
         // Print insights
         for insight in &result.insights {
             println!("  • {}", insight);
         }
-        
+
         // Print key metrics
         if !result.metrics.is_empty() {
             println!("  Key Metrics:");
@@ -143,7 +147,7 @@ fn example_multi_diff_analysis() {
             }
         }
     }
-    
+
     println!();
 }
 
@@ -176,7 +180,7 @@ fn example_with_selectors() {
             println!("  • {}", op.description());
         }
     }
-    
+
     println!();
 }
 
@@ -185,7 +189,7 @@ fn example_classification() {
     println!("{}", LINE);
 
     let engine = DiffEngine::default();
-    
+
     let test_cases = vec![
         ("Hello World", "hello world", "Case change"),
         ("The cat sat.", "The dog sat.", "Semantic change"),
@@ -199,15 +203,17 @@ fn example_classification() {
 
     for (original, modified, description) in test_cases {
         let diff = engine.diff(original, modified);
-        
+
         println!("Test: {}", description);
         println!("  Original:  \"{}\"", original);
         println!("  Modified:  \"{}\"", modified);
-        
+
         for op in diff.changed_operations() {
             let classification = classifier.classify_operation(op);
-            println!("  Classification: {:?} (confidence: {:.2})", 
-                     classification.category, classification.confidence);
+            println!(
+                "  Classification: {:?} (confidence: {:.2})",
+                classification.category, classification.confidence
+            );
             if !classification.explanation.is_empty() {
                 println!("  Explanation: {}", classification.explanation);
             }
@@ -234,14 +240,18 @@ The fox displays remarkable agility and speed.
 "#;
 
     println!("Analyzing user edits to AI-generated content...\n");
-    println!("Generated ({}  chars): {}", generated.len(), generated.trim());
+    println!(
+        "Generated ({}  chars): {}",
+        generated.len(),
+        generated.trim()
+    );
     println!("\nEdited ({} chars): {}", edited.len(), edited.trim());
 
     // Configure diff engine
     let config = DiffConfig::default()
         .with_pipeline(
             TextPipeline::new()
-                .add_normalizer(Box::new(WhitespaceNormalizer::new().with_collapse(true)))
+                .add_normalizer(Box::new(WhitespaceNormalizer::new().with_collapse(true))),
         )
         .with_tokenizer(Box::new(WordTokenizer::new()))
         .with_semantic_similarity(true)
@@ -257,15 +267,21 @@ The fox displays remarkable agility and speed.
 
     // 1. Basic Statistics
     println!("\n1️⃣ Basic Statistics:");
-    println!("   • Semantic similarity: {:.1}%", diff.semantic_similarity * 100.0);
-    println!("   • Total changes: {:.1}%", diff.statistics.change_percentage * 100.0);
+    println!(
+        "   • Semantic similarity: {:.1}%",
+        diff.semantic_similarity * 100.0
+    );
+    println!(
+        "   • Total changes: {:.1}%",
+        diff.statistics.change_percentage * 100.0
+    );
     println!("   • Insertions: {}", diff.statistics.insertions);
     println!("   • Deletions: {}", diff.statistics.deletions);
     println!("   • Modifications: {}", diff.statistics.modifications);
 
     // 2. Run single-diff analyzers
     println!("\n2️⃣ Detailed Analysis:");
-    
+
     let similarity_analyzer = SemanticSimilarityAnalyzer::new();
     let similarity_result = similarity_analyzer.analyze(&diff);
     println!("\n   Semantic Similarity:");
@@ -297,16 +313,16 @@ The fox displays remarkable agility and speed.
     // 3. Classify changes
     println!("\n3️⃣ Change Categories:");
     let classifier = RuleBasedClassifier::new();
-    
-    let mut category_counts: std::collections::HashMap<String, usize> = 
+
+    let mut category_counts: std::collections::HashMap<String, usize> =
         std::collections::HashMap::new();
-    
+
     for op in diff.changed_operations() {
         let classification = classifier.classify_operation(op);
         let cat = format!("{:?}", classification.category);
         *category_counts.entry(cat).or_insert(0) += 1;
     }
-    
+
     for (category, count) in category_counts.iter() {
         let pct = (*count as f64 / diff.changed_operations().len() as f64) * 100.0;
         println!("   • {}: {} operations ({:.1}%)", category, count, pct);
@@ -319,7 +335,7 @@ The fox displays remarkable agility and speed.
     } else {
         println!("   ⚠️  User made substantial semantic changes");
     }
-    
+
     if diff.statistics.change_percentage < 0.3 {
         println!("   ✅ User made minor refinements (<30% changed)");
     } else {

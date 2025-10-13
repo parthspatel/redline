@@ -46,19 +46,19 @@ impl CharSpan {
 pub enum CharMapping {
     /// One-to-one mapping (simple transformation like lowercase)
     Direct(usize),
-    
+
     /// One-to-many mapping (one normalized char maps to multiple original chars)
     /// Example: combining diacritics, ligatures
     Expanded(Vec<usize>),
-    
+
     /// Many-to-one mapping (multiple original chars map to one normalized char)
     /// Example: whitespace normalization (multiple spaces → one space)
     Collapsed(CharSpan),
-    
+
     /// Inserted character (exists in normalized but not in original)
     /// Example: adding text, expanding abbreviations
     Inserted,
-    
+
     /// Deleted character (exists in original but not in normalized)
     /// Stores original position
     Deleted(usize),
@@ -95,15 +95,15 @@ pub struct CharacterMap {
     /// Key: position in normalized text
     /// Value: mapping to original text
     normalized_to_original: BTreeMap<usize, CharMapping>,
-    
+
     /// Map from original position to normalized position(s)
     /// Key: position in original text
     /// Value: position(s) in normalized text (can be empty if deleted)
     original_to_normalized: BTreeMap<usize, Vec<usize>>,
-    
+
     /// Length of the original text
     original_len: usize,
-    
+
     /// Length of the normalized text
     normalized_len: usize,
 }
@@ -142,7 +142,7 @@ impl CharacterMap {
     pub fn add_collapsed_mapping(&mut self, normalized_pos: usize, original_span: CharSpan) {
         self.normalized_to_original
             .insert(normalized_pos, CharMapping::Collapsed(original_span));
-        
+
         for orig_pos in original_span.start..original_span.end {
             self.original_to_normalized
                 .entry(orig_pos)
@@ -157,7 +157,7 @@ impl CharacterMap {
             self.normalized_to_original
                 .insert(norm_pos, CharMapping::Expanded(vec![original_pos]));
         }
-        
+
         self.original_to_normalized
             .insert(original_pos, normalized_positions);
     }
@@ -228,7 +228,7 @@ impl CharacterMap {
             if let Some(intermediate_mapping) = other.normalized_to_original(final_pos) {
                 // Get position(s) in intermediate (self's normalized) text
                 let intermediate_positions = intermediate_mapping.all_positions();
-                
+
                 // Map back to original through self
                 let mut original_positions = Vec::new();
                 for intermediate_pos in intermediate_positions {
@@ -271,7 +271,10 @@ mod tests {
     #[test]
     fn test_identity_mapping() {
         let map = CharacterMap::identity(5);
-        assert_eq!(map.normalized_to_original(0).unwrap().primary_position(), Some(0));
+        assert_eq!(
+            map.normalized_to_original(0).unwrap().primary_position(),
+            Some(0)
+        );
         assert_eq!(map.original_to_normalized(0), Some(&[0][..]));
     }
 
@@ -279,7 +282,7 @@ mod tests {
     fn test_collapsed_mapping() {
         let mut map = CharacterMap::new(5, 3);
         map.add_collapsed_mapping(1, CharSpan::new(1, 4)); // Multiple chars -> one
-        
+
         let mapping = map.normalized_to_original(1).unwrap();
         assert_eq!(mapping.all_positions(), vec![1, 2, 3]);
     }
@@ -290,7 +293,7 @@ mod tests {
         for i in 0..10 {
             map.add_direct_mapping(i, i);
         }
-        
+
         let span = CharSpan::new(2, 5);
         let original_spans = map.map_span_to_original(span);
         assert_eq!(original_spans.len(), 1);
@@ -301,13 +304,13 @@ mod tests {
     fn test_composition() {
         // First mapping: identity for length 5
         let map1 = CharacterMap::identity(5);
-        
+
         // Second mapping: collapse positions 2-4 to position 2
         let mut map2 = CharacterMap::new(5, 3);
         map2.add_direct_mapping(0, 0);
         map2.add_direct_mapping(1, 1);
         map2.add_collapsed_mapping(2, CharSpan::new(2, 5));
-        
+
         // Compose: should map directly from original to final
         let composed = map1.compose(&map2);
         assert_eq!(composed.original_len(), 5);

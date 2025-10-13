@@ -1,8 +1,8 @@
 //! Diff result types and structures
 
 use crate::mapping::CharSpan;
-use crate::tokenizers::Token;
 use crate::metrics::PairwiseMetrics;
+use crate::tokenizers::Token;
 use std::fmt;
 
 /// Type of edit operation
@@ -42,26 +42,26 @@ pub enum ChangeCategory {
 pub struct DiffOperation {
     /// Type of operation
     pub edit_type: EditType,
-    
+
     /// Original text (for delete/modify)
     pub original_text: Option<String>,
-    
+
     /// Modified text (for insert/modify)
     pub modified_text: Option<String>,
-    
+
     /// Span in original text
     pub original_span: Option<CharSpan>,
-    
+
     /// Span in modified text
     pub modified_span: Option<CharSpan>,
-    
+
     /// Tokens involved (if tokenization was used)
     pub original_tokens: Vec<Token>,
     pub modified_tokens: Vec<Token>,
-    
+
     /// Classification of this change
     pub category: ChangeCategory,
-    
+
     /// Confidence score for classification (0.0 to 1.0)
     pub confidence: f64,
 }
@@ -103,10 +103,16 @@ impl DiffOperation {
     pub fn description(&self) -> String {
         match self.edit_type {
             EditType::Insert => {
-                format!("Insert: \"{}\"", self.modified_text.as_ref().unwrap_or(&String::new()))
+                format!(
+                    "Insert: \"{}\"",
+                    self.modified_text.as_ref().unwrap_or(&String::new())
+                )
             }
             EditType::Delete => {
-                format!("Delete: \"{}\"", self.original_text.as_ref().unwrap_or(&String::new()))
+                format!(
+                    "Delete: \"{}\"",
+                    self.original_text.as_ref().unwrap_or(&String::new())
+                )
             }
             EditType::Modify => {
                 format!(
@@ -125,28 +131,28 @@ impl DiffOperation {
 pub struct DiffStatistics {
     /// Total characters in original
     pub original_length: usize,
-    
+
     /// Total characters in modified
     pub modified_length: usize,
-    
+
     /// Number of insertions
     pub insertions: usize,
-    
+
     /// Number of deletions
     pub deletions: usize,
-    
+
     /// Number of modifications
     pub modifications: usize,
-    
+
     /// Total edit distance
     pub edit_distance: usize,
-    
+
     /// Percentage of text changed (0.0 to 1.0)
     pub change_percentage: f64,
-    
+
     /// Number of tokens changed (if tokenized)
     pub tokens_changed: usize,
-    
+
     /// Total number of tokens
     pub total_tokens: usize,
 }
@@ -164,7 +170,7 @@ impl DiffStatistics {
     pub fn calculate_change_percentage(&mut self) {
         let total_changes = self.insertions + self.deletions + self.modifications;
         let max_length = self.original_length.max(self.modified_length);
-        
+
         self.change_percentage = if max_length > 0 {
             total_changes as f64 / max_length as f64
         } else {
@@ -178,19 +184,19 @@ impl DiffStatistics {
 pub struct DiffAnalysis {
     /// Semantic similarity score (0.0 to 1.0)
     pub semantic_similarity: f64,
-    
+
     /// Stylistic change score (0.0 = no style change, 1.0 = complete style change)
     pub stylistic_change: f64,
-    
+
     /// Readability change (positive = more readable, negative = less readable)
     pub readability_change: f64,
-    
+
     /// Tone change description
     pub tone_change: Option<String>,
-    
+
     /// Detected edit intents
     pub edit_intents: Vec<String>,
-    
+
     /// Custom analysis metrics
     pub custom_metrics: Vec<(String, f64)>,
 }
@@ -244,18 +250,24 @@ impl DiffResult {
     /// Get metrics, computing and caching if not already cached
     pub fn get_metrics(&mut self) -> &PairwiseMetrics {
         if self.metrics.is_none() {
-            self.metrics = Some(PairwiseMetrics::compute(&self.original_text, &self.modified_text));
+            self.metrics = Some(PairwiseMetrics::compute(
+                &self.original_text,
+                &self.modified_text,
+            ));
         }
         self.metrics.as_ref().unwrap()
     }
 
     /// Get metrics immutably, computing on-the-fly if needed (doesn't cache)
-    pub fn get_metrics_ref(&self) -> std::borrow::Cow<PairwiseMetrics> {
+    pub fn get_metrics_ref(&self) -> std::borrow::Cow<'_, PairwiseMetrics> {
         if let Some(ref metrics) = self.metrics {
             std::borrow::Cow::Borrowed(metrics)
         } else {
             // Compute but don't cache (since we're immutable)
-            std::borrow::Cow::Owned(PairwiseMetrics::compute(&self.original_text, &self.modified_text))
+            std::borrow::Cow::Owned(PairwiseMetrics::compute(
+                &self.original_text,
+                &self.modified_text,
+            ))
         }
     }
 
@@ -267,18 +279,16 @@ impl DiffResult {
             EditType::Modify => self.statistics.modifications += 1,
             EditType::Equal => {}
         }
-        
+
         self.operations.push(op);
     }
 
     /// Finalize the diff result (calculate derived values)
     pub fn finalize(&mut self) {
         self.statistics.calculate_change_percentage();
-        self.statistics.edit_distance = 
-            self.statistics.insertions + 
-            self.statistics.deletions + 
-            self.statistics.modifications;
-        
+        self.statistics.edit_distance =
+            self.statistics.insertions + self.statistics.deletions + self.statistics.modifications;
+
         self.semantic_similarity = self.analysis.semantic_similarity;
     }
 
@@ -297,7 +307,9 @@ impl DiffResult {
 
     /// Check if the diff is empty (no changes)
     pub fn is_empty(&self) -> bool {
-        self.operations.iter().all(|op| op.edit_type == EditType::Equal)
+        self.operations
+            .iter()
+            .all(|op| op.edit_type == EditType::Equal)
     }
 
     /// Get only the changed operations (exclude Equal)
@@ -311,15 +323,16 @@ impl DiffResult {
     /// Group operations by category
     pub fn operations_by_category(&self) -> Vec<(ChangeCategory, Vec<&DiffOperation>)> {
         use std::collections::HashMap;
-        
+
         let mut grouped: HashMap<String, Vec<&DiffOperation>> = HashMap::new();
-        
+
         for op in &self.operations {
             let key = format!("{:?}", op.category);
             grouped.entry(key).or_default().push(op);
         }
-        
-        grouped.into_iter()
+
+        grouped
+            .into_iter()
             .map(|(_, ops)| {
                 let category = ops.first().unwrap().category.clone();
                 (category, ops)
@@ -333,11 +346,11 @@ impl fmt::Display for DiffResult {
         writeln!(f, "=== Diff Result ===")?;
         writeln!(f, "{}", self.summary())?;
         writeln!(f, "\nOperations:")?;
-        
+
         for (i, op) in self.operations.iter().enumerate() {
             writeln!(f, "  {}. {}", i + 1, op.description())?;
         }
-        
+
         Ok(())
     }
 }
@@ -384,25 +397,22 @@ impl UnifiedDiff {
     /// Format as unified diff string
     pub fn format(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str(&format!("--- {}\n", self.original_name));
         output.push_str(&format!("+++ {}\n", self.modified_name));
-        
+
         for hunk in &self.hunks {
             output.push_str(&format!(
                 "@@ -{},{} +{},{} @@\n",
-                hunk.original_start,
-                hunk.original_count,
-                hunk.modified_start,
-                hunk.modified_count
+                hunk.original_start, hunk.original_count, hunk.modified_start, hunk.modified_count
             ));
-            
+
             for line in &hunk.lines {
                 output.push_str(line);
                 output.push('\n');
             }
         }
-        
+
         output
     }
 }
@@ -416,7 +426,7 @@ mod tests {
         let op = DiffOperation::new(EditType::Modify)
             .with_original("hello".to_string(), CharSpan::new(0, 5))
             .with_modified("world".to_string(), CharSpan::new(0, 5));
-        
+
         assert_eq!(op.edit_type, EditType::Modify);
         assert_eq!(op.original_text, Some("hello".to_string()));
         assert_eq!(op.modified_text, Some("world".to_string()));
@@ -425,15 +435,15 @@ mod tests {
     #[test]
     fn test_diff_result() {
         let mut result = DiffResult::new("hello".to_string(), "world".to_string());
-        
+
         result.add_operation(
             DiffOperation::new(EditType::Modify)
                 .with_original("hello".to_string(), CharSpan::new(0, 5))
-                .with_modified("world".to_string(), CharSpan::new(0, 5))
+                .with_modified("world".to_string(), CharSpan::new(0, 5)),
         );
-        
+
         result.finalize();
-        
+
         assert_eq!(result.statistics.modifications, 1);
         assert!(!result.is_empty());
     }

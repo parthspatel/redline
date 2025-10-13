@@ -53,8 +53,8 @@ Analyzes how similar the texts are in meaning.
 
 **Example:**
 ```rust
-use redline_core::analyzers::single::SemanticSimilarityAnalyzer;
-use redline_core::analyzers::SingleDiffAnalyzer;
+use redline_core::analyzer::single::SemanticSimilarityAnalyzer;
+use redline_core::analyzer::SingleDiffAnalyzer;
 
 let analyzer = SemanticSimilarityAnalyzer::new()
     .with_threshold(0.7);
@@ -79,7 +79,7 @@ Measures readability using multiple standard metrics.
 
 **Example:**
 ```rust
-use redline_core::analyzers::single::ReadabilityAnalyzer;
+use redline_core::analyzer::single::ReadabilityAnalyzer;
 
 let analyzer = ReadabilityAnalyzer::new();
 let result = analyzer.analyze(&diff);
@@ -105,7 +105,7 @@ Analyzes stylistic properties of the text.
 
 **Example:**
 ```rust
-use redline_core::analyzers::single::StylisticAnalyzer;
+use redline_core::analyzer::single::StylisticAnalyzer;
 
 let analyzer = StylisticAnalyzer::new();
 let result = analyzer.analyze(&diff);
@@ -139,7 +139,7 @@ Classifies the intent behind edits.
 
 **Example:**
 ```rust
-use redline_core::analyzers::single::EditIntentClassifier;
+use redline_core::analyzer::single::EditIntentClassifier;
 
 let analyzer = EditIntentClassifier::new();
 let result = analyzer.analyze(&diff);
@@ -166,8 +166,8 @@ Computes aggregate statistics across diffs.
 
 **Example:**
 ```rust
-use redline_core::analyzers::multi::AggregateStatisticsAnalyzer;
-use redline_core::analyzers::MultiDiffAnalyzer;
+use redline_core::analyzer::multi::AggregateStatisticsAnalyzer;
+use redline_core::analyzer::MultiDiffAnalyzer;
 
 let analyzer = AggregateStatisticsAnalyzer::new();
 let diffs: Vec<&DiffResult> = diff_collection.iter().collect();
@@ -186,7 +186,7 @@ Detects common patterns across multiple edits.
 
 **Configuration:**
 ```rust
-use redline_core::analyzers::multi::PatternDetectionAnalyzer;
+use redline_core::analyzer::multi::PatternDetectionAnalyzer;
 
 let analyzer = PatternDetectionAnalyzer::new()
     .with_min_frequency(0.3); // Report patterns occurring in >30% of diffs
@@ -210,7 +210,7 @@ Groups diffs by editing behavior using k-means clustering.
 
 **Example:**
 ```rust
-use redline_core::analyzers::multi::BehaviorClusteringAnalyzer;
+use redline_core::analyzer::multi::BehaviorClusteringAnalyzer;
 
 let analyzer = BehaviorClusteringAnalyzer::new(3); // 3 clusters
 let result = analyzer.analyze(&diffs);
@@ -234,7 +234,7 @@ Analyzes trends over time (requires chronological order).
 
 **Example:**
 ```rust
-use redline_core::analyzers::multi::TemporalTrendAnalyzer;
+use redline_core::analyzer::multi::TemporalTrendAnalyzer;
 
 // Diffs should be in chronological order
 let analyzer = TemporalTrendAnalyzer::new();
@@ -250,7 +250,7 @@ Filter operations from diffs for targeted analysis.
 Selects all operations.
 
 ```rust
-use redline_core::analyzers::selectors::WholeDocumentSelector;
+use redline_core::analyzer::selectors::WholeDocumentSelector;
 
 let selector = WholeDocumentSelector;
 let ops = selector.select(&diff);
@@ -261,7 +261,7 @@ let ops = selector.select(&diff);
 Selects operations within specific paragraphs.
 
 ```rust
-use redline_core::analyzers::selectors::ParagraphSelector;
+use redline_core::analyzer::selectors::ParagraphSelector;
 
 // Select second paragraph
 let selector = ParagraphSelector::single(1);
@@ -277,7 +277,7 @@ let ops = selector.select(&diff);
 Selects operations within sections (by headers).
 
 ```rust
-use redline_core::analyzers::selectors::SectionSelector;
+use redline_core::analyzer::selectors::SectionSelector;
 
 let selector = SectionSelector::by_headers(vec!["Introduction", "Methods"]);
 let ops = selector.select(&diff);
@@ -288,7 +288,7 @@ let ops = selector.select(&diff);
 Selects by edit type.
 
 ```rust
-use redline_core::analyzers::selectors::EditTypeSelector;
+use redline_core::analyzer::selectors::EditTypeSelector;
 
 let selector = EditTypeSelector::insertions();
 // or: deletions(), modifications(), changes()
@@ -301,7 +301,7 @@ let ops = selector.select(&diff);
 Combines multiple selectors with AND/OR logic.
 
 ```rust
-use redline_core::analyzers::selectors::{CompositeSelector, EditTypeSelector, ParagraphSelector};
+use redline_core::analyzer::selectors::{CompositeSelector, EditTypeSelector, ParagraphSelector};
 
 // Select insertions in paragraph 2
 let selector = CompositeSelector::and(vec![
@@ -388,9 +388,9 @@ let ensemble = EnsembleClassifier::new(vec![
 
 ```rust
 use redline_core::{DiffEngine, AnalysisReport};
-use redline_core::analyzers::single::*;
-use redline_core::analyzers::multi::*;
-use redline_core::analyzers::SingleDiffAnalyzer;
+use redline_core::analyzer::single::*;
+use redline_core::analyzer::multi::*;
+use redline_core::analyzer::SingleDiffAnalyzer;
 
 // 1. Create diffs
 let engine = DiffEngine::default();
@@ -485,7 +485,7 @@ let patterns = pattern_analyzer.analyze(&all_diffs);
 ### Custom Single Analyzer
 
 ```rust
-use redline_core::analyzers::{SingleDiffAnalyzer, AnalysisResult};
+use redline_core::analyzer::{SingleDiffAnalyzer, AnalysisResult};
 use redline_core::diff::DiffResult;
 
 #[derive(Clone)]

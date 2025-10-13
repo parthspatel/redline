@@ -12,16 +12,16 @@ use crate::pipeline::LayerSet;
 pub struct Token {
     /// The token text (from the normalized layer)
     pub text: String,
-    
+
     /// Position span in the normalized layer
     pub normalized_span: CharSpan,
-    
+
     /// Position span(s) in the original text
     pub original_spans: Vec<CharSpan>,
-    
+
     /// Token index in the sequence
     pub index: usize,
-    
+
     /// Optional metadata
     pub metadata: TokenMetadata,
 }
@@ -31,7 +31,7 @@ pub struct Token {
 pub struct TokenMetadata {
     /// Token type (e.g., "word", "punctuation", "whitespace")
     pub token_type: Option<String>,
-    
+
     /// Additional properties
     pub properties: Vec<(String, String)>,
 }
@@ -124,14 +124,14 @@ impl Tokenizer for CharacterTokenizer {
     fn tokenize(&self, layer_set: &LayerSet) -> Vec<Token> {
         let final_text = layer_set.final_layer();
         let final_layer_index = layer_set.num_layers() - 1;
-        
+
         final_text
             .char_indices()
             .enumerate()
             .map(|(index, (pos, ch))| {
                 let normalized_span = CharSpan::new(pos, pos + ch.len_utf8());
                 let original_positions = layer_set.map_to_original(final_layer_index, pos);
-                
+
                 let original_spans = if original_positions.is_empty() {
                     vec![]
                 } else {
@@ -141,12 +141,7 @@ impl Tokenizer for CharacterTokenizer {
                     )]
                 };
 
-                Token::new(
-                    ch.to_string(),
-                    normalized_span,
-                    original_spans,
-                    index,
-                )
+                Token::new(ch.to_string(), normalized_span, original_spans, index)
             })
             .collect()
     }
@@ -198,7 +193,7 @@ impl Tokenizer for WordTokenizer {
     fn tokenize(&self, layer_set: &LayerSet) -> Vec<Token> {
         let final_text = layer_set.final_layer();
         let final_layer_index = layer_set.num_layers() - 1;
-        
+
         let mut tokens = Vec::new();
         let mut token_index = 0;
         let mut current_start = 0;
@@ -218,7 +213,11 @@ impl Tokenizer for WordTokenizer {
                 }
                 (Some(prev_type), current) => {
                     // Emit previous token
-                    if should_include_token(*prev_type, self.include_punctuation, self.include_whitespace) {
+                    if should_include_token(
+                        *prev_type,
+                        self.include_punctuation,
+                        self.include_whitespace,
+                    ) {
                         let token = create_token(
                             final_text,
                             current_start,
@@ -241,7 +240,11 @@ impl Tokenizer for WordTokenizer {
 
         // Emit final token
         if let Some(token_type) = current_type {
-            if should_include_token(token_type, self.include_punctuation, self.include_whitespace) {
+            if should_include_token(
+                token_type,
+                self.include_punctuation,
+                self.include_whitespace,
+            ) {
                 let token = create_token(
                     final_text,
                     current_start,
@@ -264,8 +267,14 @@ impl Tokenizer for WordTokenizer {
 
     fn metadata(&self) -> Vec<(String, String)> {
         vec![
-            ("include_punctuation".to_string(), self.include_punctuation.to_string()),
-            ("include_whitespace".to_string(), self.include_whitespace.to_string()),
+            (
+                "include_punctuation".to_string(),
+                self.include_punctuation.to_string(),
+            ),
+            (
+                "include_whitespace".to_string(),
+                self.include_whitespace.to_string(),
+            ),
         ]
     }
 
@@ -313,24 +322,24 @@ fn create_token(
 ) -> Token {
     let token_text = text[start..end].to_string();
     let normalized_span = CharSpan::new(start, end);
-    
+
     // Map all positions in the token back to original
     let mut original_positions = Vec::new();
     for pos in start..end {
         original_positions.extend(layer_set.map_to_original(layer_index, pos));
     }
-    
+
     let original_spans = if original_positions.is_empty() {
         vec![]
     } else {
         original_positions.sort_unstable();
         original_positions.dedup();
-        
+
         // Group consecutive positions into spans
         let mut spans = Vec::new();
         let mut span_start = original_positions[0];
         let mut span_end = span_start + 1;
-        
+
         for &pos in &original_positions[1..] {
             if pos == span_end {
                 span_end = pos + 1;
@@ -341,15 +350,14 @@ fn create_token(
             }
         }
         spans.push(CharSpan::new(span_start, span_end));
-        
+
         spans
     };
 
     let mut metadata = TokenMetadata::default();
     metadata.token_type = Some(format!("{:?}", token_type).to_lowercase());
 
-    Token::new(token_text, normalized_span, original_spans, index)
-        .with_metadata(metadata)
+    Token::new(token_text, normalized_span, original_spans, index).with_metadata(metadata)
 }
 
 /// N-gram tokenizer (creates overlapping n-character sequences)
@@ -400,7 +408,10 @@ impl Tokenizer for NGramTokenizer {
     fn metadata(&self) -> Vec<(String, String)> {
         vec![
             ("n".to_string(), self.n.to_string()),
-            ("character_level".to_string(), self.character_level.to_string()),
+            (
+                "character_level".to_string(),
+                self.character_level.to_string(),
+            ),
         ]
     }
 
@@ -503,7 +514,7 @@ impl Tokenizer for SentenceTokenizer {
         for (pos, ch) in final_text.char_indices() {
             if matches!(ch, '.' | '!' | '?') {
                 let end = pos + ch.len_utf8();
-                
+
                 // Skip ahead past any trailing whitespace
                 let final_end = final_text[end..]
                     .char_indices()
@@ -563,12 +574,12 @@ fn create_sentence_token(
 ) -> Token {
     let token_text = text[start..end].trim().to_string();
     let normalized_span = CharSpan::new(start, end);
-    
+
     let mut original_positions = Vec::new();
     for pos in start..end {
         original_positions.extend(layer_set.map_to_original(layer_index, pos));
     }
-    
+
     let original_spans = if original_positions.is_empty() {
         vec![]
     } else {
@@ -592,7 +603,7 @@ mod tests {
         let layers = pipeline.process("abc");
         let tokenizer = CharacterTokenizer;
         let tokens = tokenizer.tokenize(&layers);
-        
+
         assert_eq!(tokens.len(), 3);
         assert_eq!(tokens[0].text, "a");
         assert_eq!(tokens[1].text, "b");
@@ -605,7 +616,7 @@ mod tests {
         let layers = pipeline.process("hello world");
         let tokenizer = WordTokenizer::new();
         let tokens = tokenizer.tokenize(&layers);
-        
+
         assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].text, "hello");
         assert_eq!(tokens[1].text, "world");
@@ -617,7 +628,7 @@ mod tests {
         let layers = pipeline.process("abc");
         let tokenizer = NGramTokenizer::new(2);
         let tokens = tokenizer.tokenize(&layers);
-        
+
         assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].text, "ab");
         assert_eq!(tokens[1].text, "bc");

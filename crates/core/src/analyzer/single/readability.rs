@@ -1,6 +1,6 @@
 //! Readability analysis - Flesch, SMOG, ARI metrics
 
-use crate::analyzers::{AnalysisResult, SingleDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
 /// Analyzes readability changes using multiple metrics

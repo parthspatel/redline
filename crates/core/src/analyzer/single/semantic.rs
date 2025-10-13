@@ -1,6 +1,6 @@
 //! Semantic analysis - similarity and word overlap
 
-use crate::analyzers::{AnalysisResult, SingleDiffAnalyzer};
+use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::{ChangeCategory, DiffResult};
 
 /// Analyzes semantic similarity between original and modified text
@@ -66,7 +66,9 @@ impl SingleDiffAnalyzer for SemanticSimilarityAnalyzer {
         }
 
         // Analyze by edit type
-        let semantic_changes = diff.operations.iter()
+        let semantic_changes = diff
+            .operations
+            .iter()
             .filter(|op| matches!(op.category, ChangeCategory::Semantic))
             .count();
 
@@ -131,9 +133,9 @@ impl SingleDiffAnalyzer for WordOverlapAnalyzer {
     fn dependencies(&self) -> Vec<crate::execution::NodeDependencies> {
         use crate::execution::{ExecutionNode, MetricType, NodeDependencies};
 
-        vec![
-            NodeDependencies::new(ExecutionNode::Metric(MetricType::WordOverlap)),
-        ]
+        vec![NodeDependencies::new(ExecutionNode::Metric(
+            MetricType::WordOverlap,
+        ))]
     }
 
     fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
