@@ -679,4 +679,510 @@ mod tests {
             fixes[0]
         );
     }
+
+    // ============================================================================
+    // Edge Cases and Boundary Conditions
+    // ============================================================================
+
+    #[test]
+    fn test_empty_sequences() {
+        let orig: Vec<SyntacticToken> = vec![];
+        let modified: Vec<SyntacticToken> = vec![];
+
+        let alignments = align_tokens(&orig, &modified);
+        assert_eq!(
+            alignments.len(),
+            0,
+            "Expected empty alignment for empty inputs"
+        );
+    }
+
+    #[test]
+    fn test_empty_original() {
+        let orig: Vec<SyntacticToken> = vec![];
+        let modified = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 2);
+        assert!(
+            alignments
+                .iter()
+                .all(|a| matches!(a, TokenAlignment::Insertion { .. })),
+            "All alignments should be insertions"
+        );
+    }
+
+    #[test]
+    fn test_empty_modified() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+        let modified: Vec<SyntacticToken> = vec![];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 2);
+        assert!(
+            alignments
+                .iter()
+                .all(|a| matches!(a, TokenAlignment::Deletion { .. })),
+            "All alignments should be deletions"
+        );
+    }
+
+    #[test]
+    fn test_completely_different_sequences() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+        let modified = vec![
+            create_token("A", "a", "DET", "det"),
+            create_token("dog", "dog", "NOUN", "nsubj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should have 2 deletions and 2 insertions (no matches)
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+        let insertions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Insertion { .. }))
+            .count();
+
+        assert_eq!(deletions, 2, "Expected 2 deletions");
+        assert_eq!(insertions, 2, "Expected 2 insertions");
+    }
+
+    #[test]
+    fn test_single_token_match() {
+        let orig = vec![create_token("cat", "cat", "NOUN", "nsubj")];
+        let modified = vec![create_token("cat", "cat", "NOUN", "nsubj")];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 1);
+        assert!(matches!(alignments[0], TokenAlignment::Match { .. }));
+    }
+
+    #[test]
+    fn test_multiple_insertions_in_sequence() {
+        let orig = vec![create_token("cat", "cat", "NOUN", "nsubj")];
+        let modified = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("big", "big", "ADJ", "amod"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("sat", "sit", "VERB", "ROOT"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 4);
+
+        let insertions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Insertion { .. }))
+            .count();
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+
+        assert_eq!(matches, 1, "Expected 1 match (cat)");
+        assert_eq!(insertions, 3, "Expected 3 insertions");
+    }
+
+    #[test]
+    fn test_multiple_deletions_in_sequence() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("big", "big", "ADJ", "amod"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("sat", "sit", "VERB", "ROOT"),
+        ];
+        let modified = vec![create_token("cat", "cat", "NOUN", "nsubj")];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 4);
+
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+
+        assert_eq!(matches, 1, "Expected 1 match (cat)");
+        assert_eq!(deletions, 3, "Expected 3 deletions");
+    }
+
+    // ============================================================================
+    // Reordering Scenarios
+    // ============================================================================
+
+    #[test]
+    fn test_complete_reversal() {
+        let orig = vec![
+            create_token("one", "one", "NUM", "nummod"),
+            create_token("two", "two", "NUM", "nummod"),
+            create_token("three", "three", "NUM", "nummod"),
+        ];
+        let modified = vec![
+            create_token("three", "three", "NUM", "nummod"),
+            create_token("two", "two", "NUM", "nummod"),
+            create_token("one", "one", "NUM", "nummod"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 3);
+
+        // All should be reordered (except possibly the middle one)
+        let reorders = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Reorder { .. }))
+            .count();
+        assert!(
+            reorders >= 2,
+            "Expected at least 2 reorderings in complete reversal, got {}",
+            reorders
+        );
+    }
+
+    #[test]
+    fn test_partial_reordering_with_matches() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("quick", "quick", "ADJ", "amod"),
+            create_token("brown", "brown", "ADJ", "amod"),
+            create_token("fox", "fox", "NOUN", "nsubj"),
+        ];
+        let modified = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("brown", "brown", "ADJ", "amod"),
+            create_token("quick", "quick", "ADJ", "amod"),
+            create_token("fox", "fox", "NOUN", "nsubj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 4);
+
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let reorders = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Reorder { .. }))
+            .count();
+
+        assert_eq!(matches, 2, "Expected 2 matches (The, fox)");
+        assert_eq!(reorders, 2, "Expected 2 reorderings (quick, brown)");
+    }
+
+    // ============================================================================
+    // Replacement Scenarios
+    // ============================================================================
+
+    #[test]
+    fn test_multiple_replacements() {
+        let mut orig = vec![
+            create_token("I", "I", "PRON", "nsubj"),
+            create_token("walk", "walk", "VERB", "ROOT"),
+            create_token("home", "home", "NOUN", "obj"),
+        ];
+        let mut modified = vec![
+            create_token("I", "I", "PRON", "nsubj"),
+            create_token("walked", "walk", "VERB", "ROOT"),
+            create_token("home", "home", "NOUN", "obj"),
+        ];
+
+        // Set different tags for walk/walked
+        orig[1].tag = "VB".to_string();
+        modified[1].tag = "VBD".to_string();
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 3);
+
+        let replacements = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Replacement { .. }))
+            .count();
+        assert_eq!(replacements, 1, "Expected 1 replacement (walk->walked)");
+    }
+
+    #[test]
+    fn test_replacement_with_case_change() {
+        let orig = vec![create_token("hello", "hello", "INTJ", "ROOT")];
+        let modified = vec![create_token("HELLO", "hello", "INTJ", "ROOT")];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 1);
+        // Case-insensitive text match should result in Match, not Replacement
+        assert!(
+            matches!(alignments[0], TokenAlignment::Match { .. }),
+            "Case change should be treated as match"
+        );
+    }
+
+    // ============================================================================
+    // Helper Function Tests
+    // ============================================================================
+
+    #[test]
+    fn test_count_dep_changes_with_reorder() {
+        let orig = vec![
+            create_token("big", "big", "ADJ", "amod"),
+            create_token("red", "red", "ADJ", "amod"),
+        ];
+        let modified = vec![
+            create_token("red", "red", "ADJ", "amod"),
+            create_token("big", "big", "ADJ", "amod"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+        let dep_changes = count_dep_changes_aligned(&orig, &modified, &alignments);
+
+        // Reordering should cause dependency changes even if labels are same
+        assert!(
+            dep_changes > 0,
+            "Expected dependency changes due to reordering"
+        );
+    }
+
+    #[test]
+    fn test_count_pos_changes_no_changes() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+        let modified = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+        let pos_changes = count_pos_changes_aligned(&orig, &modified, &alignments);
+
+        assert_eq!(
+            pos_changes, 0,
+            "Expected no POS changes for identical sequences"
+        );
+    }
+
+    #[test]
+    fn test_structural_similarity_perfect_match() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+        let modified = orig.clone();
+
+        let alignments = align_tokens(&orig, &modified);
+        let similarity = calculate_structural_similarity_aligned(&orig, &modified, &alignments);
+
+        assert_eq!(
+            similarity, 1.0,
+            "Expected perfect structural similarity for identical sequences"
+        );
+    }
+
+    #[test]
+    fn test_structural_similarity_no_match() {
+        let orig = vec![create_token("cat", "cat", "NOUN", "nsubj")];
+        let modified = vec![create_token("dog", "dog", "NOUN", "obj")];
+
+        let alignments = align_tokens(&orig, &modified);
+        let similarity = calculate_structural_similarity_aligned(&orig, &modified, &alignments);
+
+        // Different dependency relations, no structural match
+        assert_eq!(
+            similarity, 0.0,
+            "Expected no structural similarity for different structures"
+        );
+    }
+
+    // ============================================================================
+    // Real-World Scenarios
+    // ============================================================================
+
+    #[test]
+    fn test_real_world_grammar_fix() {
+        // "She don't like apples" -> "She doesn't like apples"
+        let mut orig = vec![
+            create_token("She", "she", "PRON", "nsubj"),
+            create_token("do", "do", "AUX", "aux"),
+            create_token("n't", "not", "PART", "neg"),
+            create_token("like", "like", "VERB", "ROOT"),
+            create_token("apples", "apple", "NOUN", "dobj"),
+        ];
+        let mut modified = vec![
+            create_token("She", "she", "PRON", "nsubj"),
+            create_token("does", "do", "AUX", "aux"),
+            create_token("n't", "not", "PART", "neg"),
+            create_token("like", "like", "VERB", "ROOT"),
+            create_token("apples", "apple", "NOUN", "dobj"),
+        ];
+
+        orig[1].tag = "VBP".to_string();
+        modified[1].tag = "VBZ".to_string();
+
+        let alignments = align_tokens(&orig, &modified);
+
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let replacements = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Replacement { .. }))
+            .count();
+
+        assert_eq!(matches, 4, "Expected 4 matches");
+        assert_eq!(replacements, 1, "Expected 1 replacement (do->does)");
+    }
+
+    #[test]
+    fn test_real_world_word_order() {
+        // "The big red car" -> "The red big car"
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("big", "big", "ADJ", "amod"),
+            create_token("red", "red", "ADJ", "amod"),
+            create_token("car", "car", "NOUN", "ROOT"),
+        ];
+        let modified = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("red", "red", "ADJ", "amod"),
+            create_token("big", "big", "ADJ", "amod"),
+            create_token("car", "car", "NOUN", "ROOT"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let reorders = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Reorder { .. }))
+            .count();
+
+        assert_eq!(matches, 2, "Expected 2 matches (The, car)");
+        assert_eq!(reorders, 2, "Expected 2 reorderings (big, red)");
+
+        // Structural similarity should be reduced
+        let similarity = calculate_structural_similarity_aligned(&orig, &modified, &alignments);
+        assert!(
+            similarity < 1.0,
+            "Reordering should reduce structural similarity"
+        );
+    }
+
+    #[test]
+    fn test_real_world_mixed_changes() {
+        // Complex edit with insertion, deletion, replacement, and match
+        let mut orig = vec![
+            create_token("I", "I", "PRON", "nsubj"),
+            create_token("seen", "see", "VERB", "ROOT"),
+            create_token("the", "the", "DET", "det"),
+            create_token("movie", "movie", "NOUN", "dobj"),
+        ];
+        let mut modified = vec![
+            create_token("I", "I", "PRON", "nsubj"),
+            create_token("saw", "see", "VERB", "ROOT"),
+            create_token("the", "the", "DET", "det"),
+            create_token("great", "great", "ADJ", "amod"),
+            create_token("movie", "movie", "NOUN", "dobj"),
+        ];
+
+        orig[1].tag = "VBN".to_string(); // seen
+        modified[1].tag = "VBD".to_string(); // saw
+
+        let alignments = align_tokens(&orig, &modified);
+
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let replacements = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Replacement { .. }))
+            .count();
+        let insertions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Insertion { .. }))
+            .count();
+
+        assert_eq!(matches, 3, "Expected 3 matches (I, the, movie)");
+        assert_eq!(replacements, 1, "Expected 1 replacement (seen->saw)");
+        assert_eq!(insertions, 1, "Expected 1 insertion (great)");
+    }
+
+    #[test]
+    fn test_tokens_match_function() {
+        // Test the tokens_match helper directly
+        let tok1 = create_token("walk", "walk", "VERB", "ROOT");
+        let tok2 = create_token("walk", "walk", "VERB", "ROOT");
+        assert!(tokens_match(&tok1, &tok2), "Identical tokens should match");
+
+        let tok3 = create_token("walk", "walk", "VERB", "ROOT");
+        let tok4 = create_token("WALK", "walk", "VERB", "ROOT");
+        assert!(
+            tokens_match(&tok3, &tok4),
+            "Case-insensitive text should match"
+        );
+
+        let mut tok5 = create_token("walk", "walk", "VERB", "ROOT");
+        let mut tok6 = create_token("walked", "walk", "VERB", "ROOT");
+        tok5.tag = "VB".to_string();
+        tok6.tag = "VB".to_string();
+        assert!(
+            tokens_match(&tok5, &tok6),
+            "Same lemma and tag should match"
+        );
+
+        tok5.tag = "VB".to_string();
+        tok6.tag = "VBD".to_string();
+        assert!(
+            !tokens_match(&tok5, &tok6),
+            "Same lemma but different tag should not match"
+        );
+    }
+
+    #[test]
+    fn test_tokens_similar_function() {
+        let mut tok1 = create_token("do", "do", "AUX", "aux");
+        let mut tok2 = create_token("does", "do", "AUX", "aux");
+        tok1.tag = "VBP".to_string();
+        tok2.tag = "VBZ".to_string();
+
+        assert!(
+            tokens_similar(&tok1, &tok2),
+            "Same lemma, different tag should be similar"
+        );
+        assert!(!tokens_match(&tok1, &tok2), "But should not match exactly");
+
+        let tok3 = create_token("walk", "walk", "VERB", "ROOT");
+        let tok4 = create_token("run", "run", "VERB", "ROOT");
+        assert!(
+            !tokens_similar(&tok3, &tok4),
+            "Different lemmas should not be similar"
+        );
+    }
 }
