@@ -30,6 +30,10 @@ name = "spacy_syntactic_demo"
 path = "examples/spacy_syntactic_demo.rs"
 required-features = ["spacy"]
 
+[[example]]
+name = "bert_offline_online"
+path = "examples/bert_offline_online.rs"
+
 [dependencies]
 # For Unicode normalization (accents removal)
 unicode-normalization = "0.1"
@@ -47,13 +51,17 @@ linfa-clustering = { version = "0.8.0", optional = true }
 # For SpaCy integration (POS tagging, dependency parsing)
 pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }
 
+# For serialization of learned parameters
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
 
 [features]
 default = []
 bert = ["rust-bert", "tch", "ndarray", "console"]
-ml-extras = ["ndarray", "linfa", "linfa-clustering"]
+sklearn = ["ndarray", "linfa", "linfa-clustering"]
 spacy = ["pyo3"]
-full = ["bert", "ml-extras", "spacy"]
+full = ["sklearn", "spacy", "bert"]
 
 [dev-dependencies]
 # For testing

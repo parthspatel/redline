@@ -3,15 +3,17 @@
 //! This analyzer detects potential grammar corrections based on syntactic patterns.
 
 #[cfg(feature = "spacy")]
-use crate::nlp::SpacyClient;
+use crate::util::SpacyClient;
 
 use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
-#[cfg(feature = "spacy")]
-use crate::analyzer::classifiers::SyntacticToken;
+use crate::util::SyntacticToken;
 #[cfg(feature = "spacy")]
 use crate::token_alignment;
+
+#[cfg(feature = "spacy")]
+use crate::analyzer::spacy::{analyze_both_texts, handle_spacy_analysis_error};
 
 #[cfg(feature = "spacy")]
 /// SpaCy-based grammar fix detector
@@ -29,6 +31,7 @@ use crate::token_alignment;
 /// - **verb_fixes**: Number of verb-related fixes
 /// - **article_fixes**: Number of article corrections
 /// - **tense_fixes**: Number of tense corrections
+#[derive(Clone)]
 pub struct SpacyGrammarAnalyzer {
     spacy_client: SpacyClient,
 }
@@ -45,18 +48,6 @@ impl SpacyGrammarAnalyzer {
     /// Analyze grammar in text
     pub fn analyze_grammar(&self, text: &str) -> Result<Vec<SyntacticToken>, String> {
         self.spacy_client.analyze(text)
-    }
-
-    /// Detect potential grammar fixes between original and modified text
-    ///
-    /// Uses proper token alignment to match tokens by content, not position
-    pub fn detect_grammar_fixes(
-        &self,
-        orig: &[SyntacticToken],
-        modified: &[SyntacticToken],
-    ) -> Vec<String> {
-        let alignments = token_alignment::align_tokens(orig, modified);
-        token_alignment::find_grammar_fixes_aligned(orig, modified, &alignments)
     }
 
     /// Categorize grammar fixes by type
@@ -80,26 +71,19 @@ impl SpacyGrammarAnalyzer {
 }
 
 #[cfg(feature = "spacy")]
-impl Clone for SpacyGrammarAnalyzer {
-    fn clone(&self) -> Self {
-        Self {
-            spacy_client: self.spacy_client.clone(),
-        }
-    }
-}
-
-#[cfg(feature = "spacy")]
 impl SingleDiffAnalyzer for SpacyGrammarAnalyzer {
     fn analyze(&self, diff: &DiffResult) -> AnalysisResult {
         let mut result = AnalysisResult::new(self.name());
 
-        // Analyze grammar
-        match (
-            self.spacy_client.analyze(&diff.original_text),
-            self.spacy_client.analyze(&diff.modified_text),
-        ) {
-            (Ok(orig_tokens), Ok(mod_tokens)) => {
-                let grammar_fixes = self.detect_grammar_fixes(&orig_tokens, &mod_tokens);
+        // Analyze grammar using utility function
+        match analyze_both_texts(&self.spacy_client, diff) {
+            Ok((orig_tokens, mod_tokens)) => {
+                let alignments = token_alignment::align_tokens(&orig_tokens, &mod_tokens);
+                let grammar_fixes = token_alignment::find_grammar_fixes_aligned(
+                    &orig_tokens,
+                    &mod_tokens,
+                    &alignments,
+                );
                 let (verb_fixes, article_fixes, tense_fixes) =
                     self.categorize_fixes(&grammar_fixes);
 
@@ -131,11 +115,8 @@ impl SingleDiffAnalyzer for SpacyGrammarAnalyzer {
 
                 result.add_metadata("status", "success");
             }
-            (Err(e), _) | (_, Err(e)) => {
-                result.add_insight(format!("Grammar analysis failed: {}", e));
-                result.add_metadata("status", "error");
-                result.add_metadata("error", &e);
-                result = result.with_confidence(0.0);
+            Err(e) => {
+                result = handle_spacy_analysis_error(result, "Grammar", e);
             }
         }
 
@@ -147,7 +128,7 @@ impl SingleDiffAnalyzer for SpacyGrammarAnalyzer {
     }
 
     fn description(&self) -> &str {
-        "Detects grammar fixes using SpaCy's syntactic analysis"
+        "Detects grammar fixes like verb agreement and article corrections"
     }
 
     fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
@@ -159,41 +140,8 @@ impl SingleDiffAnalyzer for SpacyGrammarAnalyzer {
 // Non-SpaCy fallback implementation
 // ============================================================================
 
-#[cfg(not(feature = "spacy"))]
-pub struct SpacyGrammarAnalyzer;
-
-#[cfg(not(feature = "spacy"))]
-impl SpacyGrammarAnalyzer {
-    pub fn new(_model_name: impl Into<String>) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl Clone for SpacyGrammarAnalyzer {
-    fn clone(&self) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl SingleDiffAnalyzer for SpacyGrammarAnalyzer {
-    fn analyze(&self, _diff: &DiffResult) -> AnalysisResult {
-        let mut result = AnalysisResult::new(self.name());
-        result.add_insight("SpaCy feature not enabled. Compile with --features spacy".to_string());
-        result.add_metadata("status", "disabled");
-        result.with_confidence(0.0)
-    }
-
-    fn name(&self) -> &str {
-        "spacy_grammar"
-    }
-
-    fn description(&self) -> &str {
-        "SpaCy-based grammar analyzer (requires 'spacy' feature)"
-    }
-
-    fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
-        Box::new(self.clone())
-    }
-}
+crate::analyzer::spacy::impl_spacy_fallback!(
+    SpacyGrammarAnalyzer,
+    "spacy_grammar",
+    "Detects grammar fixes like verb agreement and article corrections"
+);

@@ -242,6 +242,7 @@ impl DiffConfig {
 
 #[cfg(test)]
 mod tests {
+    use crate::analyzer::ml::NaiveBayesClassifier;
     use super::*;
 
     #[test]
@@ -311,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_execution_plan_from_classifiers() {
-        use crate::analyzer::classifiers::naive_bayes::NaiveBayesClassifier;
+        use crate::analyzer::ml::naive_bayes::NaiveBayesClassifier;
         use crate::execution::MetricType;
 
         // When a classifier is added, its dependencies should be included in the plan
@@ -331,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_feature_analyzers_share_metrics() {
-        use crate::analyzer::classifiers::{NaiveBayesClassifier, CharSimilarityAnalyzer, WordOverlapAnalyzer};
+        use crate::analyzer::classifiers::{CharSimilarityAnalyzer, WordOverlapAnalyzer};
         use crate::execution::MetricType;
 
         // Add feature analyzers AND a classifier - they should share the same cached metrics

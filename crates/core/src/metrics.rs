@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 // Import SyntacticToken for caching
 #[cfg(feature = "spacy")]
-use crate::analyzer::classifiers::SyntacticToken;
+use crate::analyzer::spacy::SyntacticToken;
 
 /// Metrics computed for a single text
 #[derive(Debug, Clone)]

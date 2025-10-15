@@ -6,7 +6,14 @@
 use pyo3::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use crate::analyzer::classifiers::SyntacticToken;
+use super::syntactic_token::SyntacticToken;
+
+/// Helper macro for PyO3 error mapping to reduce boilerplate
+macro_rules! py_err {
+    ($operation:expr, $e:expr) => {
+        format!("Failed to {}: {}", $operation, $e)
+    };
+}
 
 /// SpaCy client for NLP operations
 ///
@@ -54,67 +61,65 @@ impl SpacyClient {
             let doc = nlp
                 .bind(py)
                 .call1((text,))
-                .map_err(|e| format!("Failed to process text: {}", e))?;
+                .map_err(|e| py_err!("process text", e))?;
 
             let mut tokens = Vec::new();
 
             // Iterate through tokens in the doc
-            let doc_iter = doc
-                .iter()
-                .map_err(|e| format!("Failed to get iterator: {}", e))?;
+            let doc_iter = doc.iter().map_err(|e| py_err!("get iterator", e))?;
 
             for token_result in doc_iter {
-                let token = token_result.map_err(|e| format!("Failed to iterate token: {}", e))?;
+                let token = token_result.map_err(|e| py_err!("iterate token", e))?;
 
                 let text = token
                     .getattr("text")
-                    .map_err(|e| format!("Failed to get text: {}", e))?
+                    .map_err(|e| py_err!("get text", e))?
                     .extract::<String>()
-                    .map_err(|e| format!("Failed to extract text: {}", e))?;
+                    .map_err(|e| py_err!("extract text", e))?;
 
                 let lemma = token
                     .getattr("lemma_")
-                    .map_err(|e| format!("Failed to get lemma: {}", e))?
+                    .map_err(|e| py_err!("get lemma", e))?
                     .extract::<String>()
-                    .map_err(|e| format!("Failed to extract lemma: {}", e))?;
+                    .map_err(|e| py_err!("extract lemma", e))?;
 
                 let pos = token
                     .getattr("pos_")
-                    .map_err(|e| format!("Failed to get POS: {}", e))?
+                    .map_err(|e| py_err!("get POS", e))?
                     .extract::<String>()
-                    .map_err(|e| format!("Failed to extract POS: {}", e))?;
+                    .map_err(|e| py_err!("extract POS", e))?;
 
                 let tag = token
                     .getattr("tag_")
-                    .map_err(|e| format!("Failed to get tag: {}", e))?
+                    .map_err(|e| py_err!("get tag", e))?
                     .extract::<String>()
-                    .map_err(|e| format!("Failed to extract tag: {}", e))?;
+                    .map_err(|e| py_err!("extract tag", e))?;
 
                 let dep = token
                     .getattr("dep_")
-                    .map_err(|e| format!("Failed to get dep: {}", e))?
+                    .map_err(|e| py_err!("get dep", e))?
                     .extract::<String>()
-                    .map_err(|e| format!("Failed to extract dep: {}", e))?;
+                    .map_err(|e| py_err!("extract dep", e))?;
 
                 let head = token
                     .getattr("head")
-                    .map_err(|e| format!("Failed to get head: {}", e))?
+                    .map_err(|e| py_err!("get head", e))?
                     .getattr("i")
-                    .map_err(|e| format!("Failed to get head index: {}", e))?
+                    .map_err(|e| py_err!("get head index", e))?
                     .extract::<usize>()
-                    .map_err(|e| format!("Failed to extract head index: {}", e))?;
+                    .map_err(|e| py_err!("extract head index", e))?;
 
                 let is_stop = token
                     .getattr("is_stop")
-                    .map_err(|e| format!("Failed to get is_stop: {}", e))?
+                    .map_err(|e| py_err!("get is_stop", e))?
                     .extract::<bool>()
-                    .map_err(|e| format!("Failed to extract is_stop: {}", e))?;
+                    .map_err(|e| py_err!("extract is_stop", e))?;
 
                 let is_punct = token
                     .getattr("is_punct")
-                    .map_err(|e| format!("Failed to get is_punct: {}", e))?
+                    .map_err(|e| py_err!("get is_punct", e))?
                     .extract::<bool>()
-                    .map_err(|e| format!("Failed to extract is_punct: {}", e))?;
+                    .map_err(|e| py_err!("extract is_punct", e))?;
 
                 tokens.push(SyntacticToken {
                     text,
@@ -179,24 +184,24 @@ impl SpacyClient {
         // Get sys module
         let sys = py
             .import_bound("sys")
-            .map_err(|e| format!("Failed to import sys: {}", e))?;
+            .map_err(|e| py_err!("import sys", e))?;
 
         // Get Python version (major.minor)
         let version_info = sys
             .getattr("version_info")
-            .map_err(|e| format!("Failed to get version_info: {}", e))?;
+            .map_err(|e| py_err!("get version_info", e))?;
 
         let major = version_info
             .getattr("major")
-            .map_err(|e| format!("Failed to get major version: {}", e))?
+            .map_err(|e| py_err!("get major version", e))?
             .extract::<i32>()
-            .map_err(|e| format!("Failed to extract major version: {}", e))?;
+            .map_err(|e| py_err!("extract major version", e))?;
 
         let minor = version_info
             .getattr("minor")
-            .map_err(|e| format!("Failed to get minor version: {}", e))?
+            .map_err(|e| py_err!("get minor version", e))?
             .extract::<i32>()
-            .map_err(|e| format!("Failed to extract minor version: {}", e))?;
+            .map_err(|e| py_err!("extract minor version", e))?;
 
         // Construct site-packages path
         let site_packages = format!(
@@ -207,11 +212,11 @@ impl SpacyClient {
         // Get sys.path
         let path = sys
             .getattr("path")
-            .map_err(|e| format!("Failed to get sys.path: {}", e))?;
+            .map_err(|e| py_err!("get sys.path", e))?;
 
         // Insert at the beginning so venv packages take precedence
         path.call_method1("insert", (0, &site_packages))
-            .map_err(|e| format!("Failed to insert into sys.path: {}", e))?;
+            .map_err(|e| py_err!("insert into sys.path", e))?;
 
         Ok(())
     }

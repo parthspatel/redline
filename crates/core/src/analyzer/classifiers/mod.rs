@@ -2,52 +2,20 @@
 //!
 //! Implements various classification techniques from the research document
 
-pub mod bert_semantic;
 pub mod category;
 pub mod features;
-pub mod naive_bayes;
 pub mod readability;
 pub mod semantic;
 pub mod stylistic;
-pub mod syntactic;
-
-// SpaCy-based analyzers (modular)
-#[cfg(feature = "spacy")]
-pub mod spacy_alignment;
-#[cfg(feature = "spacy")]
-pub mod spacy_dependency;
-#[cfg(feature = "spacy")]
-pub mod spacy_grammar;
-#[cfg(feature = "spacy")]
-pub mod spacy_pos;
-#[cfg(feature = "spacy")]
-pub mod spacy_structural;
 
 // Re-export all analyzers
-pub use bert_semantic::*;
 pub use category::*;
 pub use features::*;
-pub use naive_bayes::*;
 pub use readability::*;
 pub use semantic::*;
 pub use stylistic::*;
-pub use syntactic::*;
 
-// Re-export SpaCy types when feature is enabled
-#[cfg(feature = "spacy")]
-pub use syntactic::{SpacySyntacticAnalyzer, SyntacticComparison, SyntacticToken};
-
-// Re-export modular SpaCy analyzers
-#[cfg(feature = "spacy")]
-pub use spacy_dependency::SpacyDependencyAnalyzer;
-#[cfg(feature = "spacy")]
-pub use spacy_grammar::SpacyGrammarAnalyzer;
-#[cfg(feature = "spacy")]
-pub use spacy_pos::SpacyPOSAnalyzer;
-#[cfg(feature = "spacy")]
-pub use spacy_structural::SpacyStructuralAnalyzer;
-
-use crate::diff::{ChangeCategory, DiffOperation, DiffResult};
+pub(crate) use crate::diff::{ChangeCategory, DiffOperation, DiffResult};
 
 /// Result of a classification
 #[derive(Debug, Clone)]

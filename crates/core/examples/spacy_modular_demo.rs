@@ -13,7 +13,7 @@
 //! ```
 
 use redline_core::analyzer::SingleDiffAnalyzer;
-use redline_core::analyzer::classifiers::{
+use redline_core::analyzer::spacy::{
     SpacyDependencyAnalyzer, SpacyGrammarAnalyzer, SpacyPOSAnalyzer, SpacyStructuralAnalyzer,
 };
 use redline_core::{DiffConfig, DiffEngine};

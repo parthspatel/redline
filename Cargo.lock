@@ -1699,6 +1699,8 @@ dependencies = [
  "ndarray 0.16.1",
  "pyo3",
  "rust-bert",
+ "serde",
+ "serde_json",
  "tch",
  "unicode-normalization",
 ]

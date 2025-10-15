@@ -4,13 +4,16 @@
 //! Other SpaCy analyzers can then reuse this cached alignment instead of recomputing it.
 
 #[cfg(feature = "spacy")]
-use crate::nlp::SpacyClient;
+use crate::util::SpacyClient;
 
 use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
 #[cfg(feature = "spacy")]
 use crate::token_alignment;
+
+#[cfg(feature = "spacy")]
+use crate::analyzer::spacy::{analyze_both_texts, handle_spacy_analysis_error};
 
 #[cfg(feature = "spacy")]
 /// SpaCy-based token alignment analyzer
@@ -25,6 +28,7 @@ use crate::token_alignment;
 /// - **deletions**: Number of deleted tokens
 /// - **replacements**: Number of replaced tokens
 /// - **alignment_ratio**: Ratio of matches to total tokens
+#[derive(Clone)]
 pub struct SpacyAlignmentAnalyzer {
     spacy_client: SpacyClient,
 }
@@ -64,25 +68,13 @@ impl SpacyAlignmentAnalyzer {
 }
 
 #[cfg(feature = "spacy")]
-impl Clone for SpacyAlignmentAnalyzer {
-    fn clone(&self) -> Self {
-        Self {
-            spacy_client: self.spacy_client.clone(),
-        }
-    }
-}
-
-#[cfg(feature = "spacy")]
 impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
     fn analyze(&self, diff: &DiffResult) -> AnalysisResult {
         let mut result = AnalysisResult::new(self.name());
 
         // Get or compute tokens
-        match (
-            self.spacy_client.analyze(&diff.original_text),
-            self.spacy_client.analyze(&diff.modified_text),
-        ) {
-            (Ok(orig_tokens), Ok(mod_tokens)) => {
+        match analyze_both_texts(&self.spacy_client, diff) {
+            Ok((orig_tokens, mod_tokens)) => {
                 // Compute alignment
                 let alignments = token_alignment::align_tokens(&orig_tokens, &mod_tokens);
 
@@ -117,7 +109,7 @@ impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
 
                 if reorderings > 0 {
                     result.add_insight(format!(
-                        "⚠️ Word order changed: {} token(s) reordered",
+                        "Word order changed: {} token(s) reordered",
                         reorderings
                     ));
                 }
@@ -145,11 +137,8 @@ impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
                         .to_string(),
                 );
             }
-            (Err(e), _) | (_, Err(e)) => {
-                result.add_insight(format!("Token alignment failed: {}", e));
-                result.add_metadata("status", "error");
-                result.add_metadata("error", &e);
-                result = result.with_confidence(0.0);
+            Err(e) => {
+                result = handle_spacy_analysis_error(result, "Alignment", e);
             }
         }
 
@@ -173,41 +162,8 @@ impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
 // Non-SpaCy fallback implementation
 // ============================================================================
 
-#[cfg(not(feature = "spacy"))]
-pub struct SpacyAlignmentAnalyzer;
-
-#[cfg(not(feature = "spacy"))]
-impl SpacyAlignmentAnalyzer {
-    pub fn new(_model_name: impl Into<String>) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl Clone for SpacyAlignmentAnalyzer {
-    fn clone(&self) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl SingleDiffAnalyzer for SpacyAlignmentAnalyzer {
-    fn analyze(&self, _diff: &DiffResult) -> AnalysisResult {
-        let mut result = AnalysisResult::new(self.name());
-        result.add_insight("SpaCy feature not enabled. Compile with --features spacy".to_string());
-        result.add_metadata("status", "disabled");
-        result.with_confidence(0.0)
-    }
-
-    fn name(&self) -> &str {
-        "spacy_alignment"
-    }
-
-    fn description(&self) -> &str {
-        "SpaCy-based alignment analyzer (requires 'spacy' feature)"
-    }
-
-    fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
-        Box::new(self.clone())
-    }
-}
+crate::analyzer::spacy::impl_spacy_fallback!(
+    SpacyAlignmentAnalyzer,
+    "spacy_alignment",
+    "Computes token alignment between original and modified text using SpaCy"
+);
