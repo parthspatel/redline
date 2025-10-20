@@ -38,7 +38,7 @@ pub mod engine;
 pub mod execution;
 pub mod mapping;
 pub mod metrics;
-pub mod nlp;
+pub mod util;
 pub mod normalizers;
 pub mod pipeline;
 pub mod tokenizers;

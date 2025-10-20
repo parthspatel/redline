@@ -3,15 +3,18 @@
 //! This analyzer focuses on dependency parsing and syntactic relations.
 
 #[cfg(feature = "spacy")]
-use crate::nlp::SpacyClient;
+use crate::util::SpacyClient;
 
 use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
-#[cfg(feature = "spacy")]
-use crate::analyzer::classifiers::SyntacticToken;
+use crate::util::SyntacticToken;
 #[cfg(feature = "spacy")]
 use crate::token_alignment;
+#[cfg(feature = "spacy")]
+use crate::util::token_statistics;
+#[cfg(feature = "spacy")]
+use crate::analyzer::spacy::{analyze_both_texts, handle_spacy_analysis_error};
 
 #[cfg(feature = "spacy")]
 /// SpaCy-based dependency relation analyzer
@@ -22,6 +25,7 @@ use crate::token_alignment;
 /// - **dep_changes**: Number of dependency relation changes
 /// - **dep_unchanged_ratio**: Ratio of tokens with unchanged dependencies
 /// - **root_changes**: Number of changes to ROOT dependencies
+#[derive(Clone)]
 pub struct SpacyDependencyAnalyzer {
     spacy_client: SpacyClient,
 }
@@ -68,18 +72,23 @@ impl SpacyDependencyAnalyzer {
             .count()
     }
 
+    /// Calculate dependency distribution divergence using symmetric divergence measure
+    ///
+    /// Returns a value between 0.0 (identical distributions) and 1.0 (completely different)
+    pub fn calculate_dep_divergence(
+        &self,
+        orig: &[SyntacticToken],
+        modified: &[SyntacticToken],
+    ) -> f64 {
+        token_statistics::calculate_tag_distribution_divergence(orig, modified, |t| &t.dep)
+    }
+
     /// Get dependency distribution for tokens
     pub fn get_dep_distribution(
         &self,
         tokens: &[SyntacticToken],
     ) -> std::collections::HashMap<String, usize> {
-        let mut distribution = std::collections::HashMap::new();
-        for token in tokens {
-            if !token.is_punct {
-                *distribution.entry(token.dep.clone()).or_insert(0) += 1;
-            }
-        }
-        distribution
+        token_statistics::get_token_tag_distribution(tokens, |t| &t.dep)
     }
 
     /// Find dependency relation changes with detailed information
@@ -105,62 +114,32 @@ impl SpacyDependencyAnalyzer {
 }
 
 #[cfg(feature = "spacy")]
-impl Clone for SpacyDependencyAnalyzer {
-    fn clone(&self) -> Self {
-        Self {
-            spacy_client: self.spacy_client.clone(),
-        }
-    }
-}
-
-#[cfg(feature = "spacy")]
 impl SingleDiffAnalyzer for SpacyDependencyAnalyzer {
     fn analyze(&self, diff: &DiffResult) -> AnalysisResult {
         let mut result = AnalysisResult::new(self.name());
 
-        // Analyze dependencies
-        match (
-            self.spacy_client.analyze(&diff.original_text),
-            self.spacy_client.analyze(&diff.modified_text),
-        ) {
-            (Ok(orig_tokens), Ok(mod_tokens)) => {
+        // Analyze dependencies using helper function
+        match analyze_both_texts(&self.spacy_client, diff) {
+            Ok((orig_tokens, mod_tokens)) => {
                 let dep_changes = self.count_dep_changes(&orig_tokens, &mod_tokens);
                 let root_changes = self.count_root_changes(&orig_tokens, &mod_tokens);
 
-                // Calculate unchanged ratio
-                let min_len = orig_tokens.len().min(mod_tokens.len());
-                let unchanged = (0..min_len)
-                    .filter(|&i| orig_tokens[i].dep == mod_tokens[i].dep)
-                    .count();
-                let unchanged_ratio = if min_len > 0 {
-                    unchanged as f64 / min_len as f64
-                } else {
-                    1.0
-                };
+                // Calculate unchanged ratio using utility
+                let unchanged_ratio = token_statistics::calculate_unchanged_ratio(
+                    &orig_tokens,
+                    &mod_tokens,
+                    |a, b| a.dep == b.dep,
+                );
 
                 result.add_metric("dep_changes", dep_changes as f64);
                 result.add_metric("root_changes", root_changes as f64);
                 result.add_metric("dep_unchanged_ratio", unchanged_ratio);
 
-                // Generate insights
-                if dep_changes == 0 {
-                    result.add_insight("No dependency relation changes detected");
-                } else if dep_changes <= 2 {
-                    result.add_insight(format!(
-                        "Minimal dependency changes: {} relation(s) changed",
-                        dep_changes
-                    ));
-                } else if dep_changes <= 5 {
-                    result.add_insight(format!(
-                        "Moderate dependency changes: {} relation(s) changed",
-                        dep_changes
-                    ));
-                } else {
-                    result.add_insight(format!(
-                        "Significant dependency changes: {} relation(s) changed",
-                        dep_changes
-                    ));
-                }
+                // Generate insights using utility
+                result.add_insight(token_statistics::categorize_change_magnitude(
+                    dep_changes,
+                    "dependency",
+                ));
 
                 if root_changes > 0 {
                     result.add_insight(format!(
@@ -198,11 +177,8 @@ impl SingleDiffAnalyzer for SpacyDependencyAnalyzer {
 
                 result.add_metadata("status", "success");
             }
-            (Err(e), _) | (_, Err(e)) => {
-                result.add_insight(format!("Dependency analysis failed: {}", e));
-                result.add_metadata("status", "error");
-                result.add_metadata("error", &e);
-                result = result.with_confidence(0.0);
+            Err(e) => {
+                result = handle_spacy_analysis_error(result, "Dependency", e);
             }
         }
 
@@ -214,7 +190,7 @@ impl SingleDiffAnalyzer for SpacyDependencyAnalyzer {
     }
 
     fn description(&self) -> &str {
-        "Analyzes dependency relation changes using SpaCy"
+        "Analyzes dependency parse tree changes using SpaCy"
     }
 
     fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
@@ -226,41 +202,8 @@ impl SingleDiffAnalyzer for SpacyDependencyAnalyzer {
 // Non-SpaCy fallback implementation
 // ============================================================================
 
-#[cfg(not(feature = "spacy"))]
-pub struct SpacyDependencyAnalyzer;
-
-#[cfg(not(feature = "spacy"))]
-impl SpacyDependencyAnalyzer {
-    pub fn new(_model_name: impl Into<String>) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl Clone for SpacyDependencyAnalyzer {
-    fn clone(&self) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl SingleDiffAnalyzer for SpacyDependencyAnalyzer {
-    fn analyze(&self, _diff: &DiffResult) -> AnalysisResult {
-        let mut result = AnalysisResult::new(self.name());
-        result.add_insight("SpaCy feature not enabled. Compile with --features spacy".to_string());
-        result.add_metadata("status", "disabled");
-        result.with_confidence(0.0)
-    }
-
-    fn name(&self) -> &str {
-        "spacy_dependency"
-    }
-
-    fn description(&self) -> &str {
-        "SpaCy-based dependency analyzer (requires 'spacy' feature)"
-    }
-
-    fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
-        Box::new(self.clone())
-    }
-}
+crate::analyzer::spacy::impl_spacy_fallback!(
+    SpacyDependencyAnalyzer,
+    "spacy_dependency",
+    "Analyzes dependency parse tree changes using SpaCy"
+);

@@ -5,8 +5,10 @@
 //! - Multi-diff analyzers: Analyze collections of diffs to find patterns
 
 pub mod classifiers;
-pub mod multi;
+pub mod group;
 pub mod selectors;
+pub mod spacy;
+pub mod ml;
 
 use crate::diff::DiffResult;
 use std::collections::HashMap;

@@ -3,14 +3,14 @@
 //! This module provides algorithms to align tokens between original and modified text
 //! based on their content (text/lemma) rather than just position.
 
-use crate::analyzer::classifiers::SyntacticToken;
+use crate::util::SyntacticToken;
 
 /// Represents an alignment between two token sequences
 #[derive(Debug, Clone)]
 pub enum TokenAlignment {
     /// Tokens match at same relative position (sequential order preserved)
     Match { orig_idx: usize, mod_idx: usize },
-    /// Token only exists in original (deletion)
+    /// Token only exists in the original (deletion)
     Deletion { orig_idx: usize },
     /// Token only exists in modified (insertion)
     Insertion { mod_idx: usize },
@@ -1184,5 +1184,728 @@ mod tests {
             !tokens_similar(&tok3, &tok4),
             "Different lemmas should not be similar"
         );
+    }
+
+    // ============================================================================
+    // Ambiguous Matching and Duplicate Token Tests
+    // ============================================================================
+
+    #[test]
+    fn test_duplicate_tokens_simple() {
+        // "the cat the dog" - two instances of "the"
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("the", "the", "DET", "det"),
+            create_token("dog", "dog", "NOUN", "obj"),
+        ];
+        let modified = orig.clone();
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should have 4 matches, one for each token
+        assert_eq!(alignments.len(), 4);
+        assert_eq!(
+            alignments
+                .iter()
+                .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+                .count(),
+            4
+        );
+
+        // Verify no duplicate indices
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_duplicate_with_deletion() {
+        // "the cat the dog" -> "the cat dog" (second "the" deleted)
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("the", "the", "DET", "det"),
+            create_token("dog", "dog", "NOUN", "obj"),
+        ];
+        let modified = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("dog", "dog", "NOUN", "obj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should have 3 matches + 1 deletion
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+
+        assert_eq!(matches, 3, "Expected 3 matches");
+        assert_eq!(deletions, 1, "Expected 1 deletion");
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_duplicate_with_insertion() {
+        // "the cat dog" -> "the cat the dog" (second "the" inserted)
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("dog", "dog", "NOUN", "obj"),
+        ];
+        let modified = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("the", "the", "DET", "det"),
+            create_token("dog", "dog", "NOUN", "obj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should have 3 matches + 1 insertion
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let insertions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Insertion { .. }))
+            .count();
+
+        assert_eq!(matches, 3, "Expected 3 matches");
+        assert_eq!(insertions, 1, "Expected 1 insertion");
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_all_identical_tokens() {
+        // "the the the" -> "the the the"
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("the", "the", "DET", "det"),
+            create_token("the", "the", "DET", "det"),
+        ];
+        let modified = orig.clone();
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 3);
+        assert_eq!(
+            alignments
+                .iter()
+                .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+                .count(),
+            3
+        );
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_all_identical_different_lengths() {
+        // "the the the" -> "the the"
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("the", "the", "DET", "det"),
+            create_token("the", "the", "DET", "det"),
+        ];
+        let modified = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("the", "the", "DET", "det"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+
+        assert_eq!(matches, 2, "Expected 2 matches");
+        assert_eq!(deletions, 1, "Expected 1 deletion");
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_symmetric_sequence() {
+        // "a b b a" -> "a b b a" - palindromic sequence
+        let orig = vec![
+            create_token("a", "a", "NOUN", "ROOT"),
+            create_token("b", "b", "NOUN", "obj"),
+            create_token("b", "b", "NOUN", "obj"),
+            create_token("a", "a", "NOUN", "ROOT"),
+        ];
+        let modified = orig.clone();
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 4);
+        assert_eq!(
+            alignments
+                .iter()
+                .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+                .count(),
+            4
+        );
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_repeated_pattern() {
+        // "the cat the cat" -> "the cat the cat"
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+        ];
+        let modified = orig.clone();
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 4);
+        assert_eq!(
+            alignments
+                .iter()
+                .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+                .count(),
+            4
+        );
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    // ============================================================================
+    // Special Characters, Punctuation, and Edge Cases
+    // ============================================================================
+
+    #[test]
+    fn test_punctuation_tokens() {
+        let orig = vec![
+            create_token("Hello", "hello", "INTJ", "ROOT"),
+            create_token(",", ",", "PUNCT", "punct"),
+            create_token("world", "world", "NOUN", "vocative"),
+            create_token("!", "!", "PUNCT", "punct"),
+        ];
+        let modified = vec![
+            create_token("Hello", "hello", "INTJ", "ROOT"),
+            create_token("world", "world", "NOUN", "vocative"),
+            create_token("!", "!", "PUNCT", "punct"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+
+        assert_eq!(matches, 3, "Expected 3 matches (Hello, world, !)");
+        assert_eq!(deletions, 1, "Expected 1 deletion (comma)");
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_unicode_characters() {
+        let orig = vec![
+            create_token("café", "café", "NOUN", "ROOT"),
+            create_token("naïve", "naïve", "ADJ", "amod"),
+        ];
+        let modified = vec![
+            create_token("café", "café", "NOUN", "ROOT"),
+            create_token("naïve", "naïve", "ADJ", "amod"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 2);
+        assert_eq!(
+            alignments
+                .iter()
+                .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn test_empty_lemma() {
+        let orig = vec![create_token("xyz", "", "X", "ROOT")];
+        let modified = vec![create_token("xyz", "", "X", "ROOT")];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 1);
+        // Should match on text since lemmas are empty
+        assert!(matches!(alignments[0], TokenAlignment::Match { .. }));
+    }
+
+    #[test]
+    fn test_empty_lemma_different_text() {
+        let orig = vec![create_token("abc", "", "X", "ROOT")];
+        let modified = vec![create_token("xyz", "", "X", "ROOT")];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should be deletion + insertion (no match possible)
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+        let insertions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Insertion { .. }))
+            .count();
+
+        assert_eq!(deletions, 1);
+        assert_eq!(insertions, 1);
+    }
+
+    #[test]
+    fn test_whitespace_in_tokens() {
+        let orig = vec![create_token("hello world", "hello world", "X", "ROOT")];
+        let modified = vec![create_token("hello world", "hello world", "X", "ROOT")];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 1);
+        assert!(matches!(alignments[0], TokenAlignment::Match { .. }));
+    }
+
+    // ============================================================================
+    // Alignment Invariant Tests (Correctness Guarantees)
+    // ============================================================================
+
+    #[test]
+    fn test_alignment_invariant_all_original_indices_covered() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("quick", "quick", "ADJ", "amod"),
+            create_token("fox", "fox", "NOUN", "nsubj"),
+        ];
+        let modified = vec![
+            create_token("quick", "quick", "ADJ", "amod"),
+            create_token("dog", "dog", "NOUN", "nsubj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Every original index must appear exactly once
+        let mut orig_indices_seen = std::collections::HashSet::new();
+        for alignment in &alignments {
+            match alignment {
+                TokenAlignment::Match { orig_idx, .. }
+                | TokenAlignment::Reorder { orig_idx, .. }
+                | TokenAlignment::Replacement { orig_idx, .. }
+                | TokenAlignment::Deletion { orig_idx } => {
+                    assert!(
+                        orig_indices_seen.insert(*orig_idx),
+                        "Duplicate original index {} in alignments",
+                        orig_idx
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        assert_eq!(
+            orig_indices_seen.len(),
+            orig.len(),
+            "Not all original indices covered"
+        );
+    }
+
+    #[test]
+    fn test_alignment_invariant_all_modified_indices_covered() {
+        let orig = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("quick", "quick", "ADJ", "amod"),
+        ];
+        let modified = vec![
+            create_token("The", "the", "DET", "det"),
+            create_token("very", "very", "ADV", "advmod"),
+            create_token("quick", "quick", "ADJ", "amod"),
+            create_token("fox", "fox", "NOUN", "nsubj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Every modified index must appear exactly once
+        let mut mod_indices_seen = std::collections::HashSet::new();
+        for alignment in &alignments {
+            match alignment {
+                TokenAlignment::Match { mod_idx, .. }
+                | TokenAlignment::Reorder { mod_idx, .. }
+                | TokenAlignment::Replacement { mod_idx, .. }
+                | TokenAlignment::Insertion { mod_idx } => {
+                    assert!(
+                        mod_indices_seen.insert(*mod_idx),
+                        "Duplicate modified index {} in alignments",
+                        mod_idx
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        assert_eq!(
+            mod_indices_seen.len(),
+            modified.len(),
+            "Not all modified indices covered"
+        );
+    }
+
+    #[test]
+    fn test_alignment_determinism() {
+        // Running alignment multiple times should produce the same result
+        let orig = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("cat", "cat", "NOUN", "nsubj"),
+            create_token("the", "the", "DET", "det"),
+        ];
+        let modified = vec![
+            create_token("the", "the", "DET", "det"),
+            create_token("dog", "dog", "NOUN", "nsubj"),
+        ];
+
+        let alignment1 = align_tokens(&orig, &modified);
+        let alignment2 = align_tokens(&orig, &modified);
+        let alignment3 = align_tokens(&orig, &modified);
+
+        // Compare alignment types (not exact debug output)
+        assert_eq!(alignment1.len(), alignment2.len());
+        assert_eq!(alignment1.len(), alignment3.len());
+
+        for i in 0..alignment1.len() {
+            assert!(
+                alignments_equivalent(&alignment1[i], &alignment2[i]),
+                "Alignments differ between runs at position {}: {:?} vs {:?}",
+                i,
+                alignment1[i],
+                alignment2[i]
+            );
+            assert!(
+                alignments_equivalent(&alignment1[i], &alignment3[i]),
+                "Alignments differ between runs at position {}: {:?} vs {:?}",
+                i,
+                alignment1[i],
+                alignment3[i]
+            );
+        }
+    }
+
+    // ============================================================================
+    // Stress Tests and Performance
+    // ============================================================================
+
+    #[test]
+    fn test_large_sequence_identical() {
+        // Test with 100 identical tokens
+        let mut orig = Vec::new();
+        let mut modified = Vec::new();
+        for _ in 0..100 {
+            orig.push(create_token("word", "word", "NOUN", "ROOT"));
+            modified.push(create_token("word", "word", "NOUN", "ROOT"));
+        }
+
+        let alignments = align_tokens(&orig, &modified);
+
+        assert_eq!(alignments.len(), 100);
+        assert_eq!(
+            alignments
+                .iter()
+                .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+                .count(),
+            100
+        );
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_large_sequence_all_different() {
+        // Test with 50 completely different tokens
+        let mut orig = Vec::new();
+        let mut modified = Vec::new();
+        for i in 0..50 {
+            orig.push(create_token(
+                &format!("orig{}", i),
+                &format!("orig{}", i),
+                "NOUN",
+                "ROOT",
+            ));
+            modified.push(create_token(
+                &format!("mod{}", i),
+                &format!("mod{}", i),
+                "NOUN",
+                "ROOT",
+            ));
+        }
+
+        let alignments = align_tokens(&orig, &modified);
+
+        let deletions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Deletion { .. }))
+            .count();
+        let insertions = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Insertion { .. }))
+            .count();
+
+        assert_eq!(deletions, 50);
+        assert_eq!(insertions, 50);
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_large_sequence_mixed() {
+        // Test with 100 tokens, mix of matches and changes
+        let mut orig = Vec::new();
+        let mut modified = Vec::new();
+
+        for i in 0..100 {
+            if i % 3 == 0 {
+                // Match
+                let token =
+                    create_token(&format!("word{}", i), &format!("word{}", i), "NOUN", "ROOT");
+                orig.push(token.clone());
+                modified.push(token);
+            } else if i % 3 == 1 {
+                // Change
+                orig.push(create_token(
+                    &format!("orig{}", i),
+                    &format!("orig{}", i),
+                    "NOUN",
+                    "ROOT",
+                ));
+                modified.push(create_token(
+                    &format!("mod{}", i),
+                    &format!("mod{}", i),
+                    "NOUN",
+                    "ROOT",
+                ));
+            } else {
+                // Deletion from orig
+                orig.push(create_token(
+                    &format!("del{}", i),
+                    &format!("del{}", i),
+                    "NOUN",
+                    "ROOT",
+                ));
+            }
+        }
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Verify all indices are covered and unique
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    // ============================================================================
+    // Complex Reordering Scenarios
+    // ============================================================================
+
+    #[test]
+    fn test_interleaved_reordering() {
+        // "a b c d e" -> "b a d c e" (pairs swapped)
+        let orig = vec![
+            create_token("a", "a", "NOUN", "ROOT"),
+            create_token("b", "b", "NOUN", "obj"),
+            create_token("c", "c", "NOUN", "obj"),
+            create_token("d", "d", "NOUN", "obj"),
+            create_token("e", "e", "NOUN", "obj"),
+        ];
+        let modified = vec![
+            create_token("b", "b", "NOUN", "obj"),
+            create_token("a", "a", "NOUN", "ROOT"),
+            create_token("d", "d", "NOUN", "obj"),
+            create_token("c", "c", "NOUN", "obj"),
+            create_token("e", "e", "NOUN", "obj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should detect reorderings and matches
+        let reorders = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Reorder { .. }))
+            .count();
+        let matches = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Match { .. }))
+            .count();
+
+        // At least the swapped pairs should be detected
+        assert!(reorders > 0, "Expected some reorderings");
+        assert_eq!(reorders + matches, 5, "All tokens should match or reorder");
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    #[test]
+    fn test_rotation() {
+        // "a b c d" -> "d a b c" (rotation)
+        let orig = vec![
+            create_token("a", "a", "NOUN", "ROOT"),
+            create_token("b", "b", "NOUN", "obj"),
+            create_token("c", "c", "NOUN", "obj"),
+            create_token("d", "d", "NOUN", "obj"),
+        ];
+        let modified = vec![
+            create_token("d", "d", "NOUN", "obj"),
+            create_token("a", "a", "NOUN", "ROOT"),
+            create_token("b", "b", "NOUN", "obj"),
+            create_token("c", "c", "NOUN", "obj"),
+        ];
+
+        let alignments = align_tokens(&orig, &modified);
+
+        // Should detect reorderings
+        let reorders = alignments
+            .iter()
+            .filter(|a| matches!(a, TokenAlignment::Reorder { .. }))
+            .count();
+
+        assert!(reorders > 0, "Expected reorderings in rotation");
+        assert_eq!(alignments.len(), 4);
+
+        verify_no_duplicate_indices(&alignments, orig.len(), modified.len());
+    }
+
+    // ============================================================================
+    // Helper Functions for Test Validation
+    // ============================================================================
+
+    fn verify_no_duplicate_indices(alignments: &[TokenAlignment], orig_len: usize, mod_len: usize) {
+        let mut orig_indices = std::collections::HashSet::new();
+        let mut mod_indices = std::collections::HashSet::new();
+
+        for alignment in alignments {
+            match alignment {
+                TokenAlignment::Match { orig_idx, mod_idx }
+                | TokenAlignment::Reorder { orig_idx, mod_idx }
+                | TokenAlignment::Replacement { orig_idx, mod_idx } => {
+                    assert!(
+                        orig_indices.insert(*orig_idx),
+                        "Duplicate original index: {}",
+                        orig_idx
+                    );
+                    assert!(
+                        mod_indices.insert(*mod_idx),
+                        "Duplicate modified index: {}",
+                        mod_idx
+                    );
+                    assert!(
+                        *orig_idx < orig_len,
+                        "Original index out of bounds: {}",
+                        orig_idx
+                    );
+                    assert!(
+                        *mod_idx < mod_len,
+                        "Modified index out of bounds: {}",
+                        mod_idx
+                    );
+                }
+                TokenAlignment::Deletion { orig_idx } => {
+                    assert!(
+                        orig_indices.insert(*orig_idx),
+                        "Duplicate original index: {}",
+                        orig_idx
+                    );
+                    assert!(
+                        *orig_idx < orig_len,
+                        "Original index out of bounds: {}",
+                        orig_idx
+                    );
+                }
+                TokenAlignment::Insertion { mod_idx } => {
+                    assert!(
+                        mod_indices.insert(*mod_idx),
+                        "Duplicate modified index: {}",
+                        mod_idx
+                    );
+                    assert!(
+                        *mod_idx < mod_len,
+                        "Modified index out of bounds: {}",
+                        mod_idx
+                    );
+                }
+            }
+        }
+
+        // Verify all indices are covered
+        assert_eq!(
+            orig_indices.len(),
+            orig_len,
+            "Not all original indices covered"
+        );
+        assert_eq!(
+            mod_indices.len(),
+            mod_len,
+            "Not all modified indices covered"
+        );
+    }
+
+    fn alignments_equivalent(a1: &TokenAlignment, a2: &TokenAlignment) -> bool {
+        match (a1, a2) {
+            (
+                TokenAlignment::Match {
+                    orig_idx: o1,
+                    mod_idx: m1,
+                },
+                TokenAlignment::Match {
+                    orig_idx: o2,
+                    mod_idx: m2,
+                },
+            ) => o1 == o2 && m1 == m2,
+            (
+                TokenAlignment::Reorder {
+                    orig_idx: o1,
+                    mod_idx: m1,
+                },
+                TokenAlignment::Reorder {
+                    orig_idx: o2,
+                    mod_idx: m2,
+                },
+            ) => o1 == o2 && m1 == m2,
+            (
+                TokenAlignment::Replacement {
+                    orig_idx: o1,
+                    mod_idx: m1,
+                },
+                TokenAlignment::Replacement {
+                    orig_idx: o2,
+                    mod_idx: m2,
+                },
+            ) => o1 == o2 && m1 == m2,
+            (
+                TokenAlignment::Deletion { orig_idx: o1 },
+                TokenAlignment::Deletion { orig_idx: o2 },
+            ) => o1 == o2,
+            (
+                TokenAlignment::Insertion { mod_idx: m1 },
+                TokenAlignment::Insertion { mod_idx: m2 },
+            ) => m1 == m2,
+            _ => false,
+        }
     }
 }

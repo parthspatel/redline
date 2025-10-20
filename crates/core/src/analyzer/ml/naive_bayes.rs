@@ -2,7 +2,7 @@
 //!
 //! Provides infrastructure for training and using ML classifiers
 
-use super::{ChangeCategory, ChangeClassifier, ClassificationResult};
+use crate::analyzer::classifiers::{ChangeCategory, ChangeClassifier, ClassificationResult};
 use crate::diff::DiffOperation;
 use std::collections::HashMap;
 

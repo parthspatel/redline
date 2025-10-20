@@ -18,7 +18,7 @@ use redline_core::{DiffConfig, DiffEngine};
 #[cfg(feature = "spacy")]
 use redline_core::analyzer::SingleDiffAnalyzer;
 #[cfg(feature = "spacy")]
-use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
+use redline_core::analyzer::spacy::SpacySyntacticAnalyzer;
 
 const LINE: &str = "========================================";
 const SUBLINE: &str = "----------------------------------------";
@@ -73,7 +73,6 @@ fn main() {
 
 #[cfg(feature = "spacy")]
 fn example_basic_analysis() {
-    use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
 
     println!("Example 1: Basic Syntactic Analysis");
     println!("{}", SUBLINE);
@@ -119,7 +118,6 @@ fn example_basic_analysis() {
 
 #[cfg(feature = "spacy")]
 fn example_grammar_detection() {
-    use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
 
     println!("\nExample 2: Grammar Error Detection");
     println!("{}", SUBLINE);
@@ -184,7 +182,6 @@ fn example_grammar_detection() {
 
 #[cfg(feature = "spacy")]
 fn example_structure_comparison() {
-    use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
 
     println!("\nExample 3: Syntactic Structure Comparison");
     println!("{}", SUBLINE);
@@ -243,7 +240,6 @@ fn example_structure_comparison() {
 
 #[cfg(feature = "spacy")]
 fn example_pos_and_dependencies() {
-    use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
     use std::collections::HashMap;
 
     println!("\nExample 4: POS Distribution Analysis");
@@ -298,7 +294,6 @@ fn example_pos_and_dependencies() {
 
 #[cfg(feature = "spacy")]
 fn example_real_world_edits() {
-    use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
 
     println!("\nExample 5: Real-World Editing Scenarios");
     println!("{}", SUBLINE);
@@ -364,7 +359,6 @@ fn example_real_world_edits() {
 #[cfg(feature = "spacy")]
 fn example_diff_integration() {
     use redline_core::analyzer::SingleDiffAnalyzer;
-    use redline_core::analyzer::classifiers::SpacySyntacticAnalyzer;
 
     println!("\nExample 6: Integration with Diff Analysis");
     println!("{}", SUBLINE);

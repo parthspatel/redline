@@ -10,7 +10,11 @@
   "env": {
     "LIBTORCH_USE_PYTORCH": "1",
     "PYO3_PYTHON": "$PWD/.venv/bin/python",
-    "PYTHON_HOME": "$PWD/.venv"
+    "PYTHON_HOME": "$PWD/.venv",
+    "LIBTORCH": "/nix/store/fafdym8sgplpvg6k2x3nc2bc3kdn5n7r-libtorch-2.8.0",
+    "LIBTORCH_INCLUDE": "/nix/store/fafdym8sgplpvg6k2x3nc2bc3kdn5n7r-libtorch-2.8.0/include",
+    "LIBTORCH_LIB": "/nix/store/fafdym8sgplpvg6k2x3nc2bc3kdn5n7r-libtorch-2.8.0/lib",
+    "DYLD_LIBRARY_PATH": "/nix/store/fafdym8sgplpvg6k2x3nc2bc3kdn5n7r-libtorch-2.8.0/lib:$DYLD_LIBRARY_PATH"
   },
   "shell": {
     "init_hook": [

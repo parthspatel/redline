@@ -3,15 +3,16 @@
 //! This analyzer measures syntactic structural similarity based on dependency trees.
 
 #[cfg(feature = "spacy")]
-use crate::nlp::SpacyClient;
+use crate::util::SpacyClient;
 
 use crate::analyzer::{AnalysisResult, SingleDiffAnalyzer};
 use crate::diff::DiffResult;
 
-#[cfg(feature = "spacy")]
-use crate::analyzer::classifiers::SyntacticToken;
+use crate::util::SyntacticToken;
 #[cfg(feature = "spacy")]
 use crate::token_alignment;
+#[cfg(feature = "spacy")]
+use crate::analyzer::spacy::{analyze_both_texts, handle_spacy_analysis_error};
 
 #[cfg(feature = "spacy")]
 /// SpaCy-based structural similarity analyzer
@@ -22,6 +23,7 @@ use crate::token_alignment;
 /// - **structural_similarity**: Overall syntactic similarity (0.0 to 1.0)
 /// - **pos_dep_match_ratio**: Ratio of tokens with matching POS and dependency
 /// - **sentence_structure_change**: Whether sentence structure was significantly altered
+#[derive(Clone)]
 pub struct SpacyStructuralAnalyzer {
     spacy_client: SpacyClient,
 }
@@ -119,25 +121,14 @@ impl SpacyStructuralAnalyzer {
 }
 
 #[cfg(feature = "spacy")]
-impl Clone for SpacyStructuralAnalyzer {
-    fn clone(&self) -> Self {
-        Self {
-            spacy_client: self.spacy_client.clone(),
-        }
-    }
-}
-
-#[cfg(feature = "spacy")]
 impl SingleDiffAnalyzer for SpacyStructuralAnalyzer {
     fn analyze(&self, diff: &DiffResult) -> AnalysisResult {
         let mut result = AnalysisResult::new(self.name());
 
         // Analyze structure
-        match (
-            self.spacy_client.analyze(&diff.original_text),
-            self.spacy_client.analyze(&diff.modified_text),
-        ) {
-            (Ok(orig_tokens), Ok(mod_tokens)) => {
+        let analysis_result = analyze_both_texts(&self.spacy_client, diff);
+        match analysis_result {
+            Ok((orig_tokens, mod_tokens)) => {
                 let structural_similarity =
                     self.calculate_structural_similarity(&orig_tokens, &mod_tokens);
                 let pos_dep_match = self.pos_dep_match_ratio(&orig_tokens, &mod_tokens);
@@ -183,11 +174,8 @@ impl SingleDiffAnalyzer for SpacyStructuralAnalyzer {
 
                 result.add_metadata("status", "success");
             }
-            (Err(e), _) | (_, Err(e)) => {
-                result.add_insight(format!("Structural analysis failed: {}", e));
-                result.add_metadata("status", "error");
-                result.add_metadata("error", &e);
-                result = result.with_confidence(0.0);
+            Err(e) => {
+                result = handle_spacy_analysis_error(result, "Structural", e);
             }
         }
 
@@ -211,41 +199,8 @@ impl SingleDiffAnalyzer for SpacyStructuralAnalyzer {
 // Non-SpaCy fallback implementation
 // ============================================================================
 
-#[cfg(not(feature = "spacy"))]
-pub struct SpacyStructuralAnalyzer;
-
-#[cfg(not(feature = "spacy"))]
-impl SpacyStructuralAnalyzer {
-    pub fn new(_model_name: impl Into<String>) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl Clone for SpacyStructuralAnalyzer {
-    fn clone(&self) -> Self {
-        Self
-    }
-}
-
-#[cfg(not(feature = "spacy"))]
-impl SingleDiffAnalyzer for SpacyStructuralAnalyzer {
-    fn analyze(&self, _diff: &DiffResult) -> AnalysisResult {
-        let mut result = AnalysisResult::new(self.name());
-        result.add_insight("SpaCy feature not enabled. Compile with --features spacy".to_string());
-        result.add_metadata("status", "disabled");
-        result.with_confidence(0.0)
-    }
-
-    fn name(&self) -> &str {
-        "spacy_structural"
-    }
-
-    fn description(&self) -> &str {
-        "SpaCy-based structural analyzer (requires 'spacy' feature)"
-    }
-
-    fn clone_box(&self) -> Box<dyn SingleDiffAnalyzer> {
-        Box::new(self.clone())
-    }
-}
+crate::analyzer::spacy::impl_spacy_fallback!(
+    SpacyStructuralAnalyzer,
+    "spacy_structural",
+    "Analyzes structural similarity using part-of-speech and dependency patterns"
+);

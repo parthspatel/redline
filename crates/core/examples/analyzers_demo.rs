@@ -4,7 +4,7 @@ use redline_core::normalizers::WhitespaceNormalizer;
 use redline_core::tokenizers::WordTokenizer;
 use redline_core::{DiffConfig, DiffEngine, TextPipeline};
 
-use redline_core::analyzer::multi::{
+use redline_core::analyzer::group::{
     AggregateStatisticsAnalyzer, BehaviorClusteringAnalyzer, PatternDetectionAnalyzer,
     TemporalTrendAnalyzer,
 };
@@ -21,15 +21,15 @@ use redline_core::analyzer::classifiers::{ChangeClassifier, RuleBasedClassifier}
 
 // SpaCy analyzers (optional, enabled with 'spacy' feature)
 #[cfg(feature = "spacy")]
-use redline_core::analyzer::classifiers::spacy_alignment::SpacyAlignmentAnalyzer;
+use redline_core::analyzer::spacy::alignment::SpacyAlignmentAnalyzer;
 #[cfg(feature = "spacy")]
-use redline_core::analyzer::classifiers::spacy_dependency::SpacyDependencyAnalyzer;
+use redline_core::analyzer::spacy::dependency_parse::SpacyDependencyAnalyzer;
 #[cfg(feature = "spacy")]
-use redline_core::analyzer::classifiers::spacy_grammar::SpacyGrammarAnalyzer;
+use redline_core::analyzer::spacy::grammar::SpacyGrammarAnalyzer;
 #[cfg(feature = "spacy")]
-use redline_core::analyzer::classifiers::spacy_pos::SpacyPOSAnalyzer;
+use redline_core::analyzer::spacy::part_of_speech::SpacyPOSAnalyzer;
 #[cfg(feature = "spacy")]
-use redline_core::analyzer::classifiers::spacy_structural::SpacyStructuralAnalyzer;
+use redline_core::analyzer::spacy::structural::SpacyStructuralAnalyzer;
 
 const LINE: &str = "----------------------------------------";
 
