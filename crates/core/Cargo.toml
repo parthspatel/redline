@@ -53,7 +53,7 @@ default = []
 bert = ["rust-bert", "tch", "ndarray", "console"]
 ml-extras = ["ndarray", "linfa", "linfa-clustering"]
 spacy = ["pyo3"]
-full = ["bert", "ml-extras", "spacy"]
+full = ["ml-extras", "spacy"]
 
 [dev-dependencies]
 # For testing
