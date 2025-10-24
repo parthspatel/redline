@@ -1,0 +1,14 @@
+[package]
+name = "redline-core-v1"
+version = "0.1.0"
+edition = "2024"
+authors = ["Parth Patel <parthspatel.nj@gmail.com>"]
+license = ""
+description = "A comprehensive text diffing library with extensible normalization and tokenization"
+repository = "https://github.com/parthspatel/redline"
+keywords = ["diff", "text", "nlp", "tokenization", "normalization"]
+categories = ["text-processing", "algorithms"]
+
+[lib]
+name = "redline_core"
+path = "src/lib.rs"
