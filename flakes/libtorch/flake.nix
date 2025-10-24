@@ -14,14 +14,14 @@
         libtorch-src =
           if pkgs.stdenv.isDarwin then
             pkgs.fetchzip {
-              url = "https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.8.0.zip";
-              sha256 = "sha256-SSXzurfCo20leoDpEmdVOPN53bE6zYEvqOKmYowihO8="; # Run 'nix build' to get the correct hash
+              url = "https://download.pytorch.org/libtorch/cpu/libtorch-macos-arm64-2.4.0.zip";
+              sha256 = "sha256-t/Z+ux4IpQ5Bhlb+I94NAyQ/kmZiVjF8adPMfpZdjaA="; # Placeholder - run 'nix build' to get the correct hash
               stripRoot = false;
             }
           else if pkgs.stdenv.isLinux then
             pkgs.fetchzip {
-              url = "https://download.pytorch.org/libtorch/cu126/libtorch-shared-with-deps-2.8.0%2Bcu126.zip";
-              sha256 = ""; # Run 'nix build' to get the correct hash
+              url = "https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.4.0%2Bcu121.zip";
+              sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # Placeholder - run 'nix build' on Linux to get the correct hash
               stripRoot = false;
             }
           else
@@ -29,7 +29,7 @@
 
         libtorch = pkgs.stdenv.mkDerivation {
           pname = "libtorch";
-          version = "2.8.0";
+          version = "2.4.0";
 
           src = libtorch-src;
 

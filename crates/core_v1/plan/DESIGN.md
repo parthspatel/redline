@@ -1,9 +1,9 @@
 # Redline Core v1.0 - Design Document
 
-**Version:** 1.0  
-**Author:** Parth Patel  
-**Date:** 2025-10-15  
-**Status:** Proposed
+**Version:** 1.0
+**Author:** Parth Patel
+**Date:** 2025-10-23
+**Status:** In Review
 
 ---
 
@@ -154,12 +154,16 @@ struct TextStore {
     shared: HashMap<StringId, Arc<str>>,
 }
 
-// Tokens reference strings by ID, not by value
+// Tokens store StringId (Copy, no lifetimes)
+// This allows tokens to be freely copied and stored
 struct Token {
-    text_id: StringId,
+    text_id: StringId,  // 4 bytes
     span: Span,
-    // ...
+    original_spans: SmallVec<[Span; 1]>,
+    index: usize,
+    kind: TokenKind,
 }
+// Total: ~60 bytes, implements Copy
 ```
 
 ### 5. **Async-First Design**
@@ -475,19 +479,28 @@ impl DiffOrchestrator {
 ### Core Types
 
 ```rust
-/// Immutable reference to text in the store
+/// Immutable reference to text in the store (created on-demand)
 #[derive(Copy, Clone)]
 pub struct TextRef<'store> {
     id: StringId,
     store: &'store TextStore,
 }
 
-/// A token with zero-copy text reference
-pub struct Token<'store> {
-    pub text: TextRef<'store>,
+/// A token with ID reference (Copy, no lifetimes)
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct Token {
+    pub text_id: StringId,  // Reference to text in store
     pub span: Span,
+    pub original_spans: SmallVec<[Span; 1]>,
     pub index: usize,
     pub kind: TokenKind,
+}
+
+impl Token {
+    /// Get text via store reference
+    pub fn text<'a>(&self, store: &'a TextStore) -> &'a str {
+        store.get(self.text_id)
+    }
 }
 
 /// Span in text (byte positions)
@@ -497,29 +510,479 @@ pub struct Span {
     pub end: usize,
 }
 
-/// Edit operation (now generic over token lifetime)
-pub struct EditOperation<'store> {
+/// Edit operation with borrowed token slices
+#[derive(Copy, Clone, Debug)]
+pub struct EditOperation<'a> {
     pub kind: EditKind,
-    pub original_tokens: &'store [Token<'store>],
-    pub modified_tokens: &'store [Token<'store>],
+    pub original_tokens: &'a [Token],  // Slice into ProcessedText
+    pub modified_tokens: &'a [Token],
     pub original_span: Option<Span>,
     pub modified_span: Option<Span>,
 }
 
 /// Complete diff result
-pub struct DiffResult<'store> {
-    pub operations: Vec<EditOperation<'store>>,
+pub struct DiffResult<'a> {
+    pub operations: Vec<EditOperation<'a>>,
     pub statistics: DiffStatistics,
-    pub original: ProcessedText<'store>,
-    pub modified: ProcessedText<'store>,
+    pub original: Arc<ProcessedText>,  // Keeps tokens alive
+    pub modified: Arc<ProcessedText>,
 }
 
 /// Analysis report
-pub struct DiffReport {
-    pub diff: DiffResult<'static>, // Owned version
+pub struct DiffReport<'a> {
+    pub diff: DiffResult<'a>,
     pub metrics: Arc<PairwiseMetrics>,
     pub analysis_results: Vec<AnalysisResult>,
 }
+```
+
+---
+
+## Thread Safety and Concurrency
+
+### Design for Concurrent Execution
+
+The v1 architecture is designed with concurrency as a first-class concern:
+
+#### Core Safety Properties
+
+1. **Token Design**: Tokens are `Copy` types containing only `StringId`
+   - No shared mutable state
+   - Trivially `Send + Sync`
+   - Can be freely passed between threads
+
+2. **Immutable Data Structures**: Most data is immutable after construction
+   - `DiffResult` is immutable once created
+   - `ProcessedText` contains immutable token vectors
+   - Shared via `Arc` for zero-copy thread sharing
+
+3. **Interior Mutability**: Only where needed for caching
+   - `CacheManager` uses `RwLock` for concurrent cache access
+   - Read-heavy workload benefits from read locks
+   - Write locks only for cache insertions
+
+#### Memory Safety Through Design
+
+**String Interning Safety**:
+```rust
+// StringId is just a number - always safe to copy
+pub struct StringId(u32);  // Copy, no references
+
+// TextStore owns all strings
+pub struct TextStore {
+    arena: Bump,           // Owns allocated memory
+    id_to_str: Vec<&str>,  // References arena memory
+}
+
+// Tokens never outlive TextStore because:
+// 1. ProcessedText owns Arc<TextStore>
+// 2. Tokens are stored in ProcessedText
+// 3. DiffResult holds Arc<ProcessedText>
+```
+
+**Lifetime Safety**:
+- EditOperations borrow token slices with lifetime `'a`
+- Lifetime ties to `ProcessedText` owned by `DiffResult`
+- Cannot have dangling references - compiler enforced
+
+#### Parallel Analysis Example
+
+```rust
+// Multiple analyzers run concurrently
+let ctx = AnalysisContext::new(
+    Arc::clone(&diff),    // Shared, immutable
+    Arc::clone(&metrics), // Shared, immutable
+);
+
+let futures = analyzers.iter().map(|analyzer| {
+    let ctx = ctx.clone();  // Cheap Arc clone
+    async move {
+        analyzer.analyze_async(&ctx).await
+    }
+});
+
+let results = join_all(futures).await;
+```
+
+### Lock-Free Where Possible
+
+- **Immutable data**: No locks needed (`DiffResult`, `ProcessedText`)
+- **Copy types**: No synchronization needed (`Token`, `StringId`, `Span`)
+- **Atomic operations**: For statistics and counters
+- **RwLock only for caches**: Optimized for read-heavy workloads
+
+---
+
+## Python Interface Architecture
+
+### Design Goals
+
+1. **Full API Exposure**: Expose all Rust functionality to Python users
+2. **Complete Extensibility**: Allow Python implementation of all pluggable components
+3. **Performance**: Minimize FFI overhead, use zero-copy where possible
+4. **Pythonic**: API feels natural to Python developers (snake_case, exceptions, context managers)
+5. **Async Support**: Full asyncio integration for async operations
+6. **Type Safety**: Leverage Python type hints and Rust type system
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Python User Code                         │
+│  (import redline_core; use Python API, write plugins)       │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────────────────────┐
+│                  PyO3 Binding Layer                          │
+│  • Wrapper types (PyDiffResult, PyToken, etc.)              │
+│  • Type conversions (Rust ↔ Python)                         │
+│  • Error translation (Result → Exception)                   │
+│  • Async bridge (tokio ↔ asyncio)                           │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────────────────────┐
+│              Python Plugin Adapters                          │
+│  • PyNormalizerAdapter: wraps Python normalizer            │
+│  • PyAnalyzerAdapter: wraps Python analyzer                │
+│  • Trait object → Python call bridge                        │
+│  • GIL management for Rust → Python calls                   │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────────────────────┐
+│                  Redline Core (Rust)                         │
+│  All core functionality implemented in Rust                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### FFI Boundary Design
+
+#### Core Principles
+
+1. **Rust Owns Core Logic**: All critical paths stay in Rust for performance
+2. **Python for Extensibility**: User-defined components can be in Python
+3. **Explicit Conversions**: No implicit conversions across FFI boundary
+4. **GIL-Aware**: Minimize time spent holding Python GIL
+5. **Error Propagation**: Rust errors map to Python exceptions, vice versa
+
+#### Type Mapping
+
+```rust
+// Rust → Python conversions
+Rust Type              → Python Type
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+String/&str           → str
+Vec<T>                → list[T]
+HashMap<K,V>          → dict[K, V]
+Option<T>             → T | None
+Result<T, E>          → T (or raises exception)
+Arc<T>                → Shared reference wrapper
+Token                 → PyToken (wrapper class)
+DiffResult            → PyDiffResult (wrapper)
+EditOperation         → PyEditOperation (wrapper)
+
+// Python → Rust conversions
+Python Type           → Rust Type
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+str                   → String
+list[T]               → Vec<T>
+dict[K, V]            → HashMap<K, V>
+None                  → Option::None
+Exception             → Result::Err
+PyObject              → Py<PyAny> (borrowed)
+```
+
+### Python Plugin System
+
+#### Plugin Architecture
+
+Python plugins implement Python base classes that mirror Rust traits:
+
+```python
+# Python plugin interface
+from redline_core import Normalizer, NormalizationResult
+
+class CustomNormalizer(Normalizer):
+    """User-defined normalizer in Python"""
+
+    def name(self) -> str:
+        return "custom_normalizer"
+
+    def normalize(self, text: str) -> NormalizationResult:
+        # Custom Python logic here
+        normalized = my_custom_logic(text)
+        mapping = build_character_mapping(text, normalized)
+        return NormalizationResult(normalized, mapping)
+```
+
+#### Plugin Registration
+
+```python
+from redline_core import DiffOrchestrator, ConfigBuilder
+
+# Register Python plugin
+orchestrator = DiffOrchestrator.builder() \
+    .add_normalizer(CustomNormalizer()) \
+    .build()
+
+# Or register dynamically
+orchestrator.register_normalizer(CustomNormalizer())
+```
+
+#### Rust-Side Adapter
+
+```rust
+// Adapter wraps Python plugin to implement Rust trait
+pub struct PyNormalizerAdapter {
+    py_object: Py<PyAny>,  // Reference to Python object
+}
+
+impl Normalizer for PyNormalizerAdapter {
+    fn normalize(&self, input: &str) -> NormalizationResult {
+        Python::with_gil(|py| {
+            // Call Python method
+            let result = self.py_object
+                .call_method1(py, "normalize", (input,))?;
+
+            // Convert Python result back to Rust
+            result.extract::<NormalizationResult>(py)
+        })
+    }
+}
+```
+
+### Async Bridge (Tokio ↔ Asyncio)
+
+#### Async Python API
+
+```python
+import asyncio
+from redline_core import DiffOrchestrator
+
+async def main():
+    orchestrator = DiffOrchestrator.new()
+
+    # Async diff (runs on Rust tokio runtime)
+    diff = await orchestrator.diff_async(original, modified)
+
+    # Async analysis (runs Python analyzers on asyncio)
+    report = await orchestrator.analyze_async(diff, ["semantic"])
+
+    print(f"Changes: {diff.statistics.change_ratio:.2%}")
+
+asyncio.run(main())
+```
+
+#### Bridge Implementation
+
+```rust
+use pyo3_asyncio::tokio::future_into_py;
+
+#[pymethods]
+impl PyDiffOrchestrator {
+    /// Async diff operation
+    fn diff_async<'py>(
+        &self,
+        py: Python<'py>,
+        original: String,
+        modified: String,
+    ) -> PyResult<&'py PyAny> {
+        let orch = self.inner.clone();
+
+        // Bridge tokio future to asyncio
+        future_into_py(py, async move {
+            let result = orch.diff_async(&original, &modified)
+                .await
+                .map_err(to_py_err)?;
+
+            Ok(PyDiffResult::from(result))
+        })
+    }
+}
+```
+
+### Performance Considerations
+
+#### GIL Management
+
+**Strategy**: Release GIL for CPU-intensive Rust operations
+
+```rust
+#[pymethods]
+impl PyDiffOrchestrator {
+    fn diff(&self, original: String, modified: String) -> PyResult<PyDiffResult> {
+        // Release GIL while Rust computes diff
+        py.allow_threads(|| {
+            self.inner.diff(&original, &modified)
+        }).map_err(to_py_err)?
+        .into()
+    }
+}
+```
+
+#### Zero-Copy Optimization
+
+```rust
+// Pass string views without copying
+#[pymethods]
+impl PyToken {
+    fn text<'py>(&self, py: Python<'py>, store: &PyTextStore) -> PyResult<&'py str> {
+        // Return string slice (zero-copy)
+        Ok(self.inner.text(&store.inner))
+    }
+}
+```
+
+#### Python Plugin Performance
+
+**Expected overhead**:
+- Rust normalizer: ~10μs
+- Python normalizer: ~100μs (10x slower, GIL + call overhead)
+- Still acceptable for most use cases
+
+**Optimization strategies**:
+1. **Batch processing**: Pass multiple items to Python at once
+2. **Caching**: Cache Python plugin results in Rust
+3. **Hybrid approach**: Critical path in Rust, customization in Python
+4. **C extensions**: Python plugins can use NumPy, native libs (no additional GIL)
+
+### Error Handling Across FFI
+
+#### Rust Errors → Python Exceptions
+
+```rust
+// Custom exception types
+create_exception!(redline_core, RedlineError, pyo3::exceptions::PyException);
+create_exception!(redline_core, TextProcessingError, RedlineError);
+create_exception!(redline_core, DiffError, RedlineError);
+
+// Conversion function
+fn to_py_err(err: RedlineError) -> PyErr {
+    match err {
+        RedlineError::TextProcessing(e) => {
+            TextProcessingError::new_err(e.to_string())
+        }
+        RedlineError::DiffComputation(e) => {
+            DiffError::new_err(e.to_string())
+        }
+        // ... other conversions
+    }
+}
+```
+
+#### Python Exceptions → Rust Errors
+
+```rust
+impl From<PyErr> for AnalysisError {
+    fn from(err: PyErr) -> Self {
+        Python::with_gil(|py| {
+            let msg = err.value(py).to_string();
+            AnalysisError::Failed(format!("Python plugin error: {}", msg))
+        })
+    }
+}
+```
+
+#### Python Usage
+
+```python
+from redline_core import DiffOrchestrator, RedlineError, DiffError
+
+try:
+    diff = orchestrator.diff(original, modified)
+except DiffError as e:
+    print(f"Diff computation failed: {e}")
+except RedlineError as e:
+    print(f"General error: {e}")
+```
+
+### Memory Safety Guarantees
+
+1. **Rust Ownership**: Rust maintains ownership of all core data
+2. **Arc for Shared Data**: Python holds `Arc` wrappers, safe to share
+3. **Lifetime Tracking**: PyO3 ensures Python objects don't outlive Rust data
+4. **No Unsafe Python**: Python code can't violate Rust safety guarantees
+5. **GIL Protection**: Mutable Python state protected by GIL
+
+### Python Package Structure
+
+```
+redline_core/
+├── __init__.py              # Main module exports
+├── py.typed                 # PEP 561 type marker
+├── foundation.pyi           # Type stubs for foundation
+├── text.pyi                 # Type stubs for text processing
+├── diff.pyi                 # Type stubs for diff
+├── analysis.pyi             # Type stubs for analysis
+└── redline_core.so          # Compiled Rust extension (maturin)
+```
+
+### Example: End-to-End Python Plugin
+
+```python
+from redline_core import (
+    AnalyzerPlugin, AnalysisContext, AnalysisResult,
+    Insight, InsightLevel
+)
+from transformers import pipeline  # HuggingFace model
+
+class SentimentAnalyzer(AnalyzerPlugin):
+    """Analyze sentiment changes using transformer model"""
+
+    def __init__(self):
+        self.model = pipeline("sentiment-analysis")
+
+    def metadata(self):
+        return {
+            "id": "sentiment",
+            "name": "Sentiment Analyzer",
+            "version": "1.0.0",
+            "cost": 0.8,  # Expensive (ML model)
+        }
+
+    def dependencies(self):
+        return ["pairwise_metrics"]  # Needs diff metrics
+
+    def analyze(self, ctx: AnalysisContext) -> AnalysisResult:
+        # Get text from diff
+        original_text = ctx.diff.original.normalized
+        modified_text = ctx.diff.modified.normalized
+
+        # Run sentiment analysis
+        orig_sentiment = self.model(original_text)[0]
+        mod_sentiment = self.model(modified_text)[0]
+
+        # Create result
+        result = AnalysisResult(
+            analyzer_id="sentiment",
+            metrics={
+                "original_sentiment": orig_sentiment["score"],
+                "modified_sentiment": mod_sentiment["score"],
+                "sentiment_change": mod_sentiment["score"] - orig_sentiment["score"],
+            },
+            insights=[
+                Insight(
+                    level=InsightLevel.INFO,
+                    category="sentiment",
+                    message=f"Sentiment changed from {orig_sentiment['label']} "
+                           f"to {mod_sentiment['label']}",
+                    confidence=min(orig_sentiment["score"], mod_sentiment["score"]),
+                )
+            ],
+            confidence=0.85,
+        )
+
+        return result
+
+# Use it
+from redline_core import DiffOrchestrator
+
+orch = DiffOrchestrator.builder() \
+    .preset("semantic") \
+    .add_analyzer(SentimentAnalyzer()) \
+    .build()
+
+report = orch.diff_with_analysis(original, modified, ["sentiment"])
+print(report.insights[0].message)
 ```
 
 ---
@@ -748,6 +1211,27 @@ StylisticAnalyzer
 
 ---
 
-**Document Status**: Draft for Review  
-**Review By**: [Team/Stakeholder]  
-**Approval Date**: TBD
+**Document Status**: In Review - Approved for Implementation
+**Last Updated**: 2025-10-23
+**Next Review**: After Phase 3 completion (Month 4)
+
+## Document Change Log
+
+### 2025-10-23 - Major Revision
+- ✅ Fixed token design: ID-based tokens with Copy semantics
+- ✅ Clarified lifetime management for EditOperations (slice-based)
+- ✅ Added thread safety and concurrency design section
+- ✅ Enhanced memory safety discussion with ownership model
+- ✅ Updated data model with consistent types and lifetimes
+- ✅ Improved documentation of performance tradeoffs
+- ✅ Added lock-free concurrency patterns
+- ✅ Clarified zero-copy design through string interning
+- ✅ **Added Python Interface Architecture section**
+  - FFI boundary design and principles
+  - Python plugin system architecture
+  - Complete type mapping (Rust ↔ Python)
+  - Async bridge design (tokio ↔ asyncio)
+  - GIL management strategy
+  - Performance considerations for Python plugins
+  - Memory safety guarantees across FFI
+  - End-to-end Python plugin example

@@ -4,7 +4,7 @@ This directory contains the complete design and technical specification for Redl
 
 ## Documents
 
-### [DESIGN.md](./DESIGN.md)
+### [DESIGN.md](plan/DESIGN.md)
 The **Design Document** provides:
 - High-level architecture and design principles
 - Analysis of v0 strengths and weaknesses
@@ -17,7 +17,7 @@ The **Design Document** provides:
 
 **Start here** if you want to understand the *why* and *what* of v1.
 
-### [TECHNICAL_SPEC.md](./TECHNICAL_SPEC.md)
+### [TECHNICAL_SPEC.md](plan/TECHNICAL_SPEC.md)
 The **Technical Specification** provides:
 - Detailed API definitions for all components
 - Complete data structure specifications
