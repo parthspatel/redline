@@ -7,6 +7,28 @@
 
 ---
 
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Analysis of v0 Architecture](#analysis-of-v0-architecture)
+3. [v1 Core Design Principles](#v1-core-design-principles)
+4. [v1 Module Architecture](#v1-module-architecture)
+5. [Key Component Designs](#key-component-designs)
+6. [Data Model Changes](#data-model-changes)
+7. [Thread Safety and Concurrency](#thread-safety-and-concurrency)
+8. [Python Interface Architecture](#python-interface-architecture)
+9. [Configuration System](#configuration-system)
+10. [Performance Optimizations](#performance-optimizations)
+11. [Migration Path from v0 to v1](#migration-path-from-v0-to-v1)
+12. [Testing Strategy](#testing-strategy)
+13. [Success Metrics](#success-metrics)
+14. [Open Questions](#open-questions)
+15. [Next Steps](#next-steps)
+16. [Appendix](#appendix)
+17. [Document Change Log](#document-change-log)
+
+---
+
 ## Executive Summary
 
 Redline Core is a comprehensive text diffing and analysis framework that goes beyond traditional line-based diff tools. The v1 redesign addresses architectural limitations discovered in v0, introduces a cleaner separation of concerns, improves performance through better caching strategies, and provides a more extensible plugin architecture.
