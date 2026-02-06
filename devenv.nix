@@ -73,7 +73,7 @@ in
   difftastic.enable = true;
   git-hooks.hooks = {
     # Nix
-    # nixfmt.enable = true;
+    nixfmt.enable = true;
 
     # Rust (tooling)
     rustfmt.enable = true;
