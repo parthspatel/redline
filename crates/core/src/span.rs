@@ -19,13 +19,22 @@ impl Span {
     ///
     /// # Panics
     /// Panics if `start > end`.
-    pub fn new(_start: u32, _end: u32) -> Self {
-        todo!()
+    #[inline]
+    pub fn new(start: u32, end: u32) -> Self {
+        assert!(
+            start <= end,
+            "Span start ({start}) must not exceed end ({end})"
+        );
+        Self { start, end }
     }
 
     /// Create an empty span at the given position.
-    pub fn empty(_pos: u32) -> Self {
-        todo!()
+    #[inline]
+    pub fn empty(pos: u32) -> Self {
+        Self {
+            start: pos,
+            end: pos,
+        }
     }
 
     /// Returns the start offset (inclusive).
@@ -39,41 +48,76 @@ impl Span {
     }
 
     /// Returns the length of this span in bytes.
+    #[inline]
     pub fn len(&self) -> u32 {
-        todo!()
+        self.end - self.start
     }
 
     /// Returns `true` if this span is empty (zero length).
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        todo!()
+        self.start == self.end
     }
 
     /// Returns `true` if this span fully contains `other`.
-    pub fn contains(&self, _other: &Span) -> bool {
-        todo!()
+    #[inline]
+    pub fn contains(&self, other: &Span) -> bool {
+        self.start <= other.start && other.end <= self.end
     }
 
     /// Returns `true` if this span contains the given byte position.
-    pub fn contains_position(&self, _pos: u32) -> bool {
-        todo!()
+    ///
+    /// The range is half-open: `start` is inclusive, `end` is exclusive.
+    #[inline]
+    pub fn contains_position(&self, pos: u32) -> bool {
+        self.start <= pos && pos < self.end
     }
 
     /// Returns `true` if this span overlaps with `other`.
-    pub fn overlaps(&self, _other: &Span) -> bool {
-        todo!()
+    ///
+    /// Adjacent spans (where one's end equals the other's start) do **not** overlap.
+    /// Empty spans never overlap with anything.
+    #[inline]
+    pub fn overlaps(&self, other: &Span) -> bool {
+        // Two half-open intervals [a, b) and [c, d) overlap iff a < d && c < b.
+        // This naturally handles empty spans: if a == b or c == d the strict
+        // inequalities cannot both be satisfied.
+        self.start < other.end && other.start < self.end
     }
 
     /// Merge this span with `other`, returning the smallest span covering both.
-    pub fn merge(&self, _other: &Span) -> Span {
-        todo!()
+    #[inline]
+    pub fn merge(&self, other: &Span) -> Span {
+        let start = self.start.min(other.start);
+        let end = self.end.max(other.end);
+        Span { start, end }
     }
 
     /// Split this span at a relative offset within the span.
     ///
+    /// Returns `(left, right)` where `left` covers `[start, start + offset)` and
+    /// `right` covers `[start + offset, end)`.
+    ///
     /// # Panics
     /// Panics if `offset > self.len()`.
-    pub fn split_at(&self, _offset: u32) -> (Span, Span) {
-        todo!()
+    #[inline]
+    pub fn split_at(&self, offset: u32) -> (Span, Span) {
+        assert!(
+            offset <= self.len(),
+            "split offset ({offset}) exceeds span length ({})",
+            self.len()
+        );
+        let mid = self.start + offset;
+        (
+            Span {
+                start: self.start,
+                end: mid,
+            },
+            Span {
+                start: mid,
+                end: self.end,
+            },
+        )
     }
 }
 
