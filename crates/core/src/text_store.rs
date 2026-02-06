@@ -2,9 +2,28 @@
 //!
 //! Strings are interned as [`StringId`] values during the builder phase,
 //! then the builder is promoted to an immutable [`TextStore`] wrapped in `Arc`.
+//!
+//! # Example
+//!
+//! ```
+//! use redline_core::text_store::{TextStoreBuilder, TextStore, StringId};
+//! use std::sync::Arc;
+//!
+//! let mut builder = TextStoreBuilder::new();
+//! let id_hello = builder.intern("hello");
+//! let id_world = builder.intern("world");
+//!
+//! // Deduplication: same string → same ID
+//! assert_eq!(builder.intern("hello"), id_hello);
+//!
+//! // Promote to immutable, shared store
+//! let store: Arc<TextStore> = builder.build();
+//! assert_eq!(store.resolve(id_hello).unwrap(), "hello");
+//! assert_eq!(store.resolve(id_world).unwrap(), "world");
+//! ```
 
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{borrow::ToOwned, string::String, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
@@ -12,76 +31,141 @@ use hashbrown::HashMap;
 
 use crate::error::StoreError;
 
+// ── StringId ─────────────────────────────────────────────────────────────────
+
 /// Opaque identifier for an interned string.
+///
+/// This is a lightweight `Copy` type wrapping a `u32` index.
+/// It is only meaningful within the [`TextStoreBuilder`] or [`TextStore`] that created it.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct StringId(u32);
 
 impl StringId {
     /// Returns the raw `u32` value of this identifier.
+    #[inline]
     pub fn as_u32(self) -> u32 {
         self.0
     }
 }
 
-/// Mutable builder for interning strings. Deduplicated.
+// ── TextStoreBuilder ─────────────────────────────────────────────────────────
+
+/// Mutable builder for interning strings with deduplication.
+///
+/// Use [`intern`](Self::intern) to add strings and receive [`StringId`] handles,
+/// then call [`build`](Self::build) to promote into an immutable, shared [`TextStore`].
 pub struct TextStoreBuilder {
+    /// Owned strings indexed by `StringId`. The index into this vec IS the `StringId`.
     strings: Vec<String>,
-    index: HashMap<String, StringId>,
+    /// Deduplication map: string content → existing StringId.
+    dedup: HashMap<String, StringId>,
 }
 
 impl TextStoreBuilder {
     /// Create a new empty builder.
+    #[inline]
     pub fn new() -> Self {
-        todo!()
+        Self {
+            strings: Vec::new(),
+            dedup: HashMap::new(),
+        }
     }
 
     /// Intern a string, returning its [`StringId`].
-    pub fn intern(&mut self, _s: &str) -> StringId {
-        todo!()
+    ///
+    /// If the string has already been interned, returns the existing ID.
+    /// Otherwise, stores the string and returns a fresh ID.
+    pub fn intern(&mut self, s: &str) -> StringId {
+        if let Some(&id) = self.dedup.get(s) {
+            return id;
+        }
+        let id = StringId(self.strings.len() as u32);
+        self.strings.push(s.to_owned());
+        self.dedup.insert(s.to_owned(), id);
+        id
     }
 
-    /// Resolve a [`StringId`] back to its string.
-    pub fn resolve(&self, _id: StringId) -> Result<&str, StoreError> {
-        todo!()
+    /// Resolve a [`StringId`] back to its string slice.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::IdNotFound`] if the ID is not valid for this builder.
+    #[inline]
+    pub fn resolve(&self, id: StringId) -> Result<&str, StoreError> {
+        self.strings
+            .get(id.0 as usize)
+            .map(|s| s.as_str())
+            .ok_or(StoreError::IdNotFound(id.0))
     }
 
     /// Returns the number of unique strings interned.
+    #[inline]
     pub fn len(&self) -> usize {
-        todo!()
+        self.strings.len()
     }
 
     /// Returns `true` if no strings have been interned.
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        todo!()
+        self.strings.is_empty()
     }
 
     /// Promote this builder into an immutable, shared [`TextStore`].
+    ///
+    /// The builder is consumed. The returned `Arc<TextStore>` can be cheaply cloned
+    /// and shared across threads.
     pub fn build(self) -> Arc<TextStore> {
-        todo!()
+        Arc::new(TextStore {
+            strings: self.strings,
+        })
     }
 }
 
-/// Immutable, shared string store. Created via [`TextStoreBuilder::build`].
+impl Default for TextStoreBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── TextStore ────────────────────────────────────────────────────────────────
+
+/// Immutable, shared string store.
+///
+/// Created via [`TextStoreBuilder::build`]. All [`StringId`] values obtained
+/// from the builder remain valid for lookups on this store.
 pub struct TextStore {
+    /// Immutable collection of interned strings.
     strings: Vec<String>,
 }
 
 impl TextStore {
-    /// Resolve a [`StringId`] back to its string.
-    pub fn resolve(&self, _id: StringId) -> Result<&str, StoreError> {
-        todo!()
+    /// Resolve a [`StringId`] back to its string slice.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::IdNotFound`] if the ID is not valid for this store.
+    #[inline]
+    pub fn resolve(&self, id: StringId) -> Result<&str, StoreError> {
+        self.strings
+            .get(id.0 as usize)
+            .map(|s| s.as_str())
+            .ok_or(StoreError::IdNotFound(id.0))
     }
 
     /// Returns the number of unique strings in the store.
+    #[inline]
     pub fn len(&self) -> usize {
-        todo!()
+        self.strings.len()
     }
 
     /// Returns `true` if the store contains no strings.
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        todo!()
+        self.strings.is_empty()
     }
 }
+
+// ── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
