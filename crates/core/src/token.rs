@@ -22,12 +22,52 @@ pub enum TokenKind {
     Continuation = 3,
 }
 
-// ── Token (stub — will fail tests) ──────────────────────────────────────────
+// ── Token ────────────────────────────────────────────────────────────────────
 
 /// A single token in a tokenized text sequence.
 ///
-/// **Stub**: this is intentionally incomplete to demonstrate the RED phase of TDD.
-pub struct Token;
+/// Combines an interned string ID, a byte-offset span, and a classification kind.
+/// The struct is `Copy` and kept at or below 24 bytes for cache-friendly storage.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Token {
+    /// The interned string this token refers to.
+    pub text_id: StringId,
+    /// The byte-offset span of this token within the original text.
+    pub span: Span,
+    /// The classification of this token.
+    pub kind: TokenKind,
+}
+
+impl Token {
+    /// Create a new token with the given string ID, span, and kind.
+    #[inline]
+    pub fn new(text_id: StringId, span: Span, kind: TokenKind) -> Self {
+        Self {
+            text_id,
+            span,
+            kind,
+        }
+    }
+
+    /// Returns `true` if this is a special control token (e.g., `[CLS]`, `[SEP]`).
+    #[inline]
+    pub fn is_special(&self) -> bool {
+        matches!(self.kind, TokenKind::Special)
+    }
+
+    /// Returns `true` if this is a continuation / subword token.
+    #[inline]
+    pub fn is_continuation(&self) -> bool {
+        matches!(self.kind, TokenKind::Continuation)
+    }
+
+    /// Returns `true` if this is an unknown / out-of-vocabulary token.
+    #[inline]
+    pub fn is_unknown(&self) -> bool {
+        matches!(self.kind, TokenKind::Unknown)
+    }
+}
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
