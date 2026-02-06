@@ -25,10 +25,17 @@ pub struct CharMapping {
 impl CharMapping {
     /// Create a new `CharMapping` from a list of `(original, normalized)` pairs.
     ///
+    /// The pairs are sorted by original position for efficient lookup.
+    ///
     /// # Errors
     /// Returns [`NormalizeError::CompositionFailed`] if `alignments` is empty.
-    pub fn new(_alignments: Vec<(u32, u32)>) -> Result<Self, NormalizeError> {
-        todo!()
+    pub fn new(mut alignments: Vec<(u32, u32)>) -> Result<Self, NormalizeError> {
+        if alignments.is_empty() {
+            return Err(NormalizeError::CompositionFailed);
+        }
+        // Sort by original position (first element) for binary search in to_normalized.
+        alignments.sort_unstable_by_key(|&(orig, _)| orig);
+        Ok(Self { alignments })
     }
 
     /// Create an identity mapping for text of the given length.
@@ -38,24 +45,44 @@ impl CharMapping {
     ///
     /// # Errors
     /// Returns [`NormalizeError::CompositionFailed`] if `len` is 0.
-    pub fn identity(_len: u32) -> Result<Self, NormalizeError> {
-        todo!()
+    pub fn identity(len: u32) -> Result<Self, NormalizeError> {
+        if len == 0 {
+            return Err(NormalizeError::CompositionFailed);
+        }
+        let alignments: Vec<(u32, u32)> = (0..len).map(|i| (i, i)).collect();
+        Ok(Self { alignments })
     }
 
     /// Map an original position to its normalized position.
     ///
+    /// Uses binary search on the original (first) component of each pair.
+    ///
     /// # Errors
     /// Returns [`NormalizeError::InvalidPosition`] if the position is not found.
-    pub fn to_normalized(&self, _original: u32) -> Result<u32, NormalizeError> {
-        todo!()
+    pub fn to_normalized(&self, original: u32) -> Result<u32, NormalizeError> {
+        self.alignments
+            .binary_search_by_key(&original, |&(orig, _)| orig)
+            .map(|idx| self.alignments[idx].1)
+            .map_err(|_| NormalizeError::InvalidPosition(original))
     }
 
     /// Map a normalized position back to its original position.
     ///
+    /// Performs a linear scan since normalized positions may not be sorted
+    /// (e.g., after reordering normalizations). For typical use cases where
+    /// normalized positions are monotonically increasing, this is still efficient.
+    ///
     /// # Errors
     /// Returns [`NormalizeError::InvalidPosition`] if the position is not found.
-    pub fn to_original(&self, _normalized: u32) -> Result<u32, NormalizeError> {
-        todo!()
+    pub fn to_original(&self, normalized: u32) -> Result<u32, NormalizeError> {
+        // Normalized positions may not be contiguous or sorted in the same order
+        // as the alignment vec (which is sorted by original). We do a linear scan.
+        for &(orig, norm) in &self.alignments {
+            if norm == normalized {
+                return Ok(orig);
+            }
+        }
+        Err(NormalizeError::InvalidPosition(normalized))
     }
 
     /// Compose this mapping with another, producing a new mapping that goes
@@ -67,23 +94,33 @@ impl CharMapping {
     /// # Errors
     /// Returns [`NormalizeError::CompositionFailed`] if any intermediate position
     /// cannot be found in `other`, or if the result would be empty.
-    pub fn compose(&self, _other: &CharMapping) -> Result<CharMapping, NormalizeError> {
-        todo!()
+    pub fn compose(&self, other: &CharMapping) -> Result<CharMapping, NormalizeError> {
+        let mut result = Vec::with_capacity(self.alignments.len());
+        for &(orig, mid) in &self.alignments {
+            let final_pos = other
+                .to_normalized(mid)
+                .map_err(|_| NormalizeError::CompositionFailed)?;
+            result.push((orig, final_pos));
+        }
+        CharMapping::new(result)
     }
 
     /// Returns the number of alignment pairs.
+    #[inline]
     pub fn len(&self) -> usize {
-        todo!()
+        self.alignments.len()
     }
 
     /// Returns `true` if there are no alignment pairs.
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        todo!()
+        self.alignments.is_empty()
     }
 
     /// Returns a reference to the underlying alignment pairs.
+    #[inline]
     pub fn alignments(&self) -> &[(u32, u32)] {
-        todo!()
+        &self.alignments
     }
 }
 
