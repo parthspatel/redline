@@ -2,68 +2,33 @@
 name = "redline-core"
 version = "0.1.0"
 edition = "2024"
-authors = ["Parth Patel <parthspatel.nj@gmail.com>"]
-license = ""
-description = "A comprehensive text diffing library with extensible normalization and tokenization"
-repository = "https://github.com/parthspatel/redline"
-keywords = ["diff", "text", "nlp", "tokenization", "normalization"]
-categories = ["text-processing", "algorithms"]
+authors = ["Parth Patel"]
+license = "MIT"
+description = "High-performance text diffing & analysis framework"
 
 [lib]
 name = "redline_core"
 path = "src/lib.rs"
 
-[[example]]
-name = "hello_world"
-path = "examples/hello_world.rs"
-
 [dependencies]
-# For Unicode normalization (accents removal)
-unicode-normalization = "0.1"
-console = { version = "0.16", features = ["std"], optional = true }
+bumpalo = { version = "3.19", features = ["collections", "allocator-api2"] }
+hashbrown = { version = "0.16", default-features = false, features = ["allocator-api2"] }
+thiserror = { version = "2.0", default-features = false }
 
-candle-core = { version = "0.9.1" }
-candle-nn = { version = "0.9.1" }
-candle-transformers = { version = "0.9.1" }
-hf-hub = { version = "0.4.3" }
-tokenizers = { version = "0.22.2" }
-anyhow = { version = "1.0" }
-serde_json = { version = "1.0" }
-
-[features]
-default = []
-# Apple Silicon: cargo run --release --features metal,accelerate
-metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
-accelerate = ["candle-core/accelerate"]
-# Linux NVIDIA: cargo run --release --features cuda
-cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
-# Intel CPUs: cargo run --release --features mkl
-mkl = ["candle-core/mkl"]
-
-[profile.release]
-lto = true
-codegen-units = 1
-
-
-
-## For statistical analysis (threshold learning)
-#ndarray = { version = "0.16.1", optional = true }
-#linfa = { version = "0.8.0", optional = true }
-#linfa-clustering = { version = "0.8.0", optional = true }
-#serde = { version = "1.0", features = ["derive"] }
-#serde_json = "1.0"
-
-## For SpaCy integration (POS tagging, dependency parsing)
-#pyo3 = { version = "0.22", features = ["auto-initialize"], optional = true }
-
-
-#[features]
-#default = ["full"]
-#bert = ["rust-bert", "tch", "ndarray", "console"]
-#sklearn = ["ndarray", "linfa", "linfa-clustering"]
-#spacy = ["pyo3"]
-#full = ["sklearn", "spacy", "bert"]
+# Optional dependencies
+serde = { version = "1", features = ["derive"], optional = true }
+tracing = { version = "0.1", optional = true }
+pyo3 = { version = "0.24", optional = true }
 
 [dev-dependencies]
-# For testing
-#criterion = "0.7.0"
+static_assertions = "1.1"
+proptest = "1.6"
+
+[features]
+default = ["std"]
+std = []
+async = ["std"]
+serde = ["dep:serde"]
+tracing = ["dep:tracing"]
+python = ["std", "dep:pyo3"]
+wasm = []
