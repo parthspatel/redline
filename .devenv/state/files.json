@@ -1,0 +1,7 @@
+{
+  "managedFiles": [
+    ".claude/settings.json",
+    ".mcp.json",
+    ".pre-commit-config.yaml"
+  ]
+}

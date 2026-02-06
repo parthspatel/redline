@@ -1,0 +1,1 @@
+{"nixpkgs":{"url":"github:cachix/devenv-nixpkgs/rolling"},"nixpkgs-python":{"url":"github:cachix/nixpkgs-python","inputs":{"nixpkgs":{"follows":"nixpkgs"}}},"nixpkgs-unstable":{"url":"github:NixOS/nixpkgs/nixpkgs-unstable"},"rust-overlay":{"url":"github:oxalica/rust-overlay","inputs":{"nixpkgs":{"follows":"nixpkgs"}}}}

@@ -1,0 +1,8 @@
+/Users/parthpatel/Documents/projects/redline/.devenv/flake.json
+/Users/parthpatel/Documents/projects/redline/.devenv.flake.nix
+/Users/parthpatel/Documents/projects/redline/.env
+/Users/parthpatel/Documents/projects/redline/devenv.local.nix
+/Users/parthpatel/Documents/projects/redline/devenv.lock
+/Users/parthpatel/Documents/projects/redline/devenv.nix
+/Users/parthpatel/Documents/projects/redline/devenv.yaml
+/Users/parthpatel/Documents/projects/redline/rust-toolchain.toml
