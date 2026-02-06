@@ -24,6 +24,7 @@ in
     pkgs.tree
     pkgs.just # command runner (Makefile alternative)
 
+    pkgs.nixfmt
     pkgs.nixfmt-tree
 
     # Python tooling

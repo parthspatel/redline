@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -46,11 +52,15 @@
             description = "PyTorch C++ library";
             homepage = "https://pytorch.org/";
             license = licenses.bsd3;
-            platforms = [ "x86_64-linux" "aarch64-darwin" ];
+            platforms = [
+              "x86_64-linux"
+              "aarch64-darwin"
+            ];
           };
         };
 
-      in {
+      in
+      {
         packages = {
           default = libtorch;
           libtorch = libtorch;
@@ -66,14 +76,24 @@
             export LIBTORCH_LIB="${libtorch}/lib"
 
             # For Linux
-            ${if pkgs.stdenv.isLinux then ''
-              export LD_LIBRARY_PATH="${libtorch}/lib:$LD_LIBRARY_PATH"
-            '' else ""}
+            ${
+              if pkgs.stdenv.isLinux then
+                ''
+                  export LD_LIBRARY_PATH="${libtorch}/lib:$LD_LIBRARY_PATH"
+                ''
+              else
+                ""
+            }
 
             # For macOS
-            ${if pkgs.stdenv.isDarwin then ''
-              export DYLD_LIBRARY_PATH="${libtorch}/lib:$DYLD_LIBRARY_PATH"
-            '' else ""}
+            ${
+              if pkgs.stdenv.isDarwin then
+                ''
+                  export DYLD_LIBRARY_PATH="${libtorch}/lib:$DYLD_LIBRARY_PATH"
+                ''
+              else
+                ""
+            }
 
             echo "LibTorch environment loaded!"
             echo "LIBTORCH: $LIBTORCH"
