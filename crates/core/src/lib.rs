@@ -13,8 +13,10 @@ pub mod char_mapping;
 pub mod error;
 pub mod span;
 pub mod text_store;
+pub mod token;
 
 pub use char_mapping::CharMapping;
 pub use error::RedlineError;
 pub use span::Span;
 pub use text_store::{StringId, TextStore, TextStoreBuilder};
+pub use token::{Token, TokenKind};

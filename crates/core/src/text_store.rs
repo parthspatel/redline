@@ -38,7 +38,7 @@ use crate::error::StoreError;
 /// This is a lightweight `Copy` type wrapping a `u32` index.
 /// It is only meaningful within the [`TextStoreBuilder`] or [`TextStore`] that created it.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct StringId(u32);
+pub struct StringId(pub(crate) u32);
 
 impl StringId {
     /// Returns the raw `u32` value of this identifier.
