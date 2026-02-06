@@ -10,5 +10,9 @@ extern crate alloc;
 compile_error!("Features `python` and `wasm` are mutually exclusive.");
 
 pub mod error;
+pub mod span;
+pub mod text_store;
 
 pub use error::RedlineError;
+pub use span::Span;
+pub use text_store::{StringId, TextStore, TextStoreBuilder};
