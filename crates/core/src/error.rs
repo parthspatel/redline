@@ -4,13 +4,79 @@
 use alloc::string::String;
 
 /// Top-level error type for redline-core operations.
-#[derive(Debug)]
-pub enum RedlineError {}
+#[derive(Debug, thiserror::Error)]
+pub enum RedlineError {
+    /// Text store error (interning, lookup, capacity).
+    #[error(transparent)]
+    Store(#[from] StoreError),
 
-impl core::fmt::Display for RedlineError {
-    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match *self {}
-    }
+    /// Tokenization error.
+    #[error(transparent)]
+    Tokenize(#[from] TokenizeError),
+
+    /// Normalization error.
+    #[error(transparent)]
+    Normalize(#[from] NormalizeError),
+
+    /// Configuration error.
+    #[error(transparent)]
+    Config(#[from] ConfigError),
+}
+
+/// Errors from the TextStore string interning system.
+#[derive(Debug, thiserror::Error)]
+pub enum StoreError {
+    /// String ID not found in the store.
+    #[error("string id {0} not found in text store")]
+    IdNotFound(u32),
+
+    /// Store capacity exceeded.
+    #[error("text store capacity exceeded: {0}")]
+    CapacityExceeded(String),
+
+    /// Store is frozen (promoted to immutable).
+    #[error("text store is frozen; use TextStoreBuilder for mutations")]
+    Frozen,
+}
+
+/// Errors during tokenization.
+#[derive(Debug, thiserror::Error)]
+pub enum TokenizeError {
+    /// Byte offset is invalid for the given text length.
+    #[error("invalid offset {offset} for text of length {length}")]
+    InvalidOffset { offset: u32, length: u32 },
+
+    /// Tokenizer produced no tokens.
+    #[error("tokenizer produced empty result")]
+    EmptyResult,
+
+    /// Span exceeds text bounds.
+    #[error("span {start}..{end} out of bounds for text of length {length}")]
+    SpanOutOfBounds { start: u32, end: u32, length: u32 },
+}
+
+/// Errors during text normalization.
+#[derive(Debug, thiserror::Error)]
+pub enum NormalizeError {
+    /// CharMapping composition failed.
+    #[error("character mapping composition failed")]
+    CompositionFailed,
+
+    /// Position is invalid in the normalized text.
+    #[error("invalid position {0} in normalized text")]
+    InvalidPosition(u32),
+}
+
+/// Configuration errors.
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    /// Unknown feature name.
+    #[error("unknown feature: {0}")]
+    UnknownFeature(String),
+
+    /// Invalid configuration value.
+    #[error("invalid configuration: {0}")]
+    Invalid(String),
 }
 
 #[cfg(test)]
