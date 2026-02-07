@@ -21,6 +21,10 @@ pub enum RedlineError {
     /// Configuration error.
     #[error(transparent)]
     Config(#[from] ConfigError),
+
+    /// Pipeline processing error.
+    #[error(transparent)]
+    Process(#[from] ProcessError),
 }
 
 /// Errors from the TextStore string interning system.
@@ -53,6 +57,14 @@ pub enum TokenizeError {
     /// Span exceeds text bounds.
     #[error("span {start}..{end} out of bounds for text of length {length}")]
     SpanOutOfBounds { start: u32, end: u32, length: u32 },
+
+    /// Input text is empty (where empty input is not allowed).
+    #[error("tokenizer received empty input")]
+    EmptyInput,
+
+    /// Tokenization failed with a reason.
+    #[error("tokenization failed: {0}")]
+    Failed(String),
 }
 
 /// Errors during text normalization.
@@ -65,6 +77,42 @@ pub enum NormalizeError {
     /// Position is invalid in the normalized text.
     #[error("invalid position {0} in normalized text")]
     InvalidPosition(u32),
+
+    /// Input text is empty.
+    #[error("normalizer received empty input")]
+    EmptyInput,
+
+    /// Produced mapping is invalid.
+    #[error("normalizer produced invalid character mapping")]
+    InvalidMapping,
+}
+
+/// Errors from the text processing pipeline.
+#[derive(Debug, thiserror::Error)]
+pub enum ProcessError {
+    /// A normalizer in the pipeline failed.
+    #[error("normalization failed in '{normalizer}': {source}")]
+    NormalizationFailed {
+        normalizer: String,
+        #[source]
+        source: NormalizeError,
+    },
+
+    /// The tokenizer failed.
+    #[error("tokenization failed in '{tokenizer}': {source}")]
+    TokenizationFailed {
+        tokenizer: String,
+        #[source]
+        source: TokenizeError,
+    },
+
+    /// Pipeline configuration error.
+    #[error("pipeline configuration error: {0}")]
+    Configuration(String),
+
+    /// Named layer not found.
+    #[error("layer '{0}' not found in pipeline")]
+    LayerNotFound(String),
 }
 
 /// Configuration errors.
@@ -134,6 +182,45 @@ mod tests {
     }
 
     #[test]
+    fn process_error_converts() {
+        let err: RedlineError = ProcessError::Configuration("test".into()).into();
+        assert!(matches!(
+            err,
+            RedlineError::Process(ProcessError::Configuration(_))
+        ));
+    }
+
+    #[test]
+    fn process_error_normalization_failed() {
+        let err = ProcessError::NormalizationFailed {
+            normalizer: "lowercaser".into(),
+            source: NormalizeError::EmptyInput,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("lowercaser"),
+            "Should contain normalizer name: {msg}"
+        );
+    }
+
+    #[test]
+    fn process_error_tokenization_failed() {
+        let err = ProcessError::TokenizationFailed {
+            tokenizer: "word".into(),
+            source: TokenizeError::EmptyInput,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("word"), "Should contain tokenizer name: {msg}");
+    }
+
+    #[test]
+    fn process_error_layer_not_found() {
+        let err = ProcessError::LayerNotFound("nfkc".into());
+        let msg = err.to_string();
+        assert!(msg.contains("nfkc"), "Should contain layer name: {msg}");
+    }
+
+    #[test]
     fn errors_are_send_sync() {
         fn assert_send_sync<T: Send + Sync + core::fmt::Debug + core::fmt::Display>() {}
         assert_send_sync::<RedlineError>();
@@ -141,6 +228,7 @@ mod tests {
         assert_send_sync::<TokenizeError>();
         assert_send_sync::<NormalizeError>();
         assert_send_sync::<ConfigError>();
+        assert_send_sync::<ProcessError>();
     }
 
     #[test]
@@ -162,17 +250,35 @@ mod tests {
             end: 0,
             length: 0,
         };
+        let _ = TokenizeError::EmptyInput;
+        let _ = TokenizeError::Failed("reason".into());
     }
 
     #[test]
     fn normalize_error_variants() {
         let _ = NormalizeError::CompositionFailed;
         let _ = NormalizeError::InvalidPosition(0);
+        let _ = NormalizeError::EmptyInput;
+        let _ = NormalizeError::InvalidMapping;
     }
 
     #[test]
     fn config_error_variants() {
         let _ = ConfigError::UnknownFeature("x".into());
         let _ = ConfigError::Invalid("y".into());
+    }
+
+    #[test]
+    fn process_error_variants() {
+        let _ = ProcessError::NormalizationFailed {
+            normalizer: "test".into(),
+            source: NormalizeError::EmptyInput,
+        };
+        let _ = ProcessError::TokenizationFailed {
+            tokenizer: "test".into(),
+            source: TokenizeError::EmptyInput,
+        };
+        let _ = ProcessError::Configuration("test".into());
+        let _ = ProcessError::LayerNotFound("test".into());
     }
 }
