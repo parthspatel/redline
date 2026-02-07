@@ -1,5 +1,19 @@
 //! Normalizer trait and normalization result types.
 
+pub mod diacritics;
+pub mod digits;
+pub mod lowercase;
+pub mod punctuation;
+pub mod unicode;
+pub mod whitespace;
+
+pub use diacritics::RemoveDiacritics;
+pub use digits::RemoveDigits;
+pub use lowercase::Lowercase;
+pub use punctuation::RemovePunctuation;
+pub use unicode::{NormalizationForm, UnicodeNormalizer};
+pub use whitespace::WhitespaceNormalizer;
+
 #[cfg(not(feature = "std"))]
 use alloc::string::String;
 

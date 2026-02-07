@@ -1,5 +1,11 @@
 //! Tokenizer trait for text tokenization.
 
+pub mod char_tokenizer;
+pub mod word;
+
+pub use char_tokenizer::CharTokenizer;
+pub use word::WordTokenizer;
+
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
