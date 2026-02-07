@@ -1,10 +1,16 @@
 //! Tokenizer trait for text tokenization.
 
+pub mod char_ngram;
 pub mod char_tokenizer;
+pub mod sentence;
 pub mod word;
+pub mod word_ngram;
 
+pub use char_ngram::CharNGramTokenizer;
 pub use char_tokenizer::CharTokenizer;
+pub use sentence::SentenceTokenizer;
 pub use word::WordTokenizer;
+pub use word_ngram::WordNGramTokenizer;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
