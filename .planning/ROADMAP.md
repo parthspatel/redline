@@ -170,6 +170,16 @@ Applied to every phase:
 5. 10K-token dissimilar diff completes in <500ms with D-threshold cutoff (no hang)
 6. DiffResult can be stored in a HashMap (no lifetime parameter)
 
+**Plans:** 5 plans in 4 waves
+
+| Plan | Wave | Type | Description | Depends On |
+|------|------|------|-------------|------------|
+| 03-01 | 1 | execute | Diff module foundation: types, trait, error, utilities, computer, result | -- |
+| 03-02 | 2 | tdd | Myers O(ND) algorithm with D-threshold and common prefix/suffix | 03-01 |
+| 03-03 | 3 | tdd | Histogram diff algorithm with chain limit and Myers fallback | 03-01, 03-02 |
+| 03-04 | 4 | execute | Property tests and integration tests | 03-01..03 |
+| 03-05 | 4 | execute | Criterion benchmarks | 03-01..03 |
+
 ---
 
 ## Phase 4: Metrics Engine
@@ -367,7 +377,7 @@ Applied to every phase:
 | 1 | Foundation | 8 | ✓ Complete | None (BLOCKING) |
 | 2 | Text Processing | 8 | ✓ Complete | Phase 1 |
 | 2.1 | Test Coverage & Simulation | 5 | Planned | Phase 2 (INSERTED) |
-| 3 | Diff Computation | 9 | Pending | Phase 1, 2 |
+| 3 | Diff Computation | 9 | Planned (5 plans) | Phase 1, 2 |
 | 4 | Metrics Engine | 6 | Pending | Phase 1, 2, 3 |
 | 5 | Analysis Framework | 8 | Pending | Phase 3, 4 |
 | 6 | Orchestration & Config | 8 | Pending | Phase 2-5 |
