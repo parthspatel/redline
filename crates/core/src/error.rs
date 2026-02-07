@@ -25,6 +25,10 @@ pub enum RedlineError {
     /// Pipeline processing error.
     #[error(transparent)]
     Process(#[from] ProcessError),
+
+    /// Diff computation error.
+    #[error(transparent)]
+    Diff(#[from] crate::diff::error::DiffError),
 }
 
 /// Errors from the TextStore string interning system.
@@ -229,6 +233,12 @@ mod tests {
         assert_send_sync::<NormalizeError>();
         assert_send_sync::<ConfigError>();
         assert_send_sync::<ProcessError>();
+        assert_send_sync::<crate::diff::error::DiffError>();
+    }
+
+    #[test]
+    fn diff_error_converts() {
+        let _: RedlineError = crate::diff::error::DiffError::Cancelled.into();
     }
 
     #[test]

@@ -10,6 +10,7 @@ extern crate alloc;
 compile_error!("Features `python` and `wasm` are mutually exclusive.");
 
 pub mod char_mapping;
+pub mod diff;
 pub mod error;
 pub mod normalize;
 pub mod process;
@@ -19,6 +20,7 @@ pub mod token;
 pub mod tokenize;
 
 pub use char_mapping::CharMapping;
+pub use diff::{DiffAlgorithm, DiffComputer, DiffError, DiffResult, EditKind, EditOperation};
 pub use error::RedlineError;
 pub use normalize::{NormalizationResult, Normalizer};
 pub use process::{ExecutionMode, NormalizationLayer, ProcessedText, TextProcessor};
