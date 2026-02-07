@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 2 (Text Processing) -- Planned
-**Last Action:** Phase 2 planned (8 plans, 5 waves), pending verification
+**Current Phase:** Phase 3 (Diff Computation) -- Next
+**Last Action:** Phase 2 executed (8 plans, 5 waves) + verified (8/8 pass)
 **Updated:** 2026-02-06
 
 ## Project Reference
@@ -12,14 +12,14 @@
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 2 -- Text Processing (next)
+**Current focus:** Phase 3 -- Diff Computation (next)
 
 ## Progress
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 1 - Foundation | ✓ Complete | 4/4 |
-| 2 - Text Processing | Planned | 8/8 |
+| 2 - Text Processing | ✓ Complete | 8/8 |
 | 3 - Diff Computation | Pending | 0/? |
 | 4 - Metrics Engine | Pending | 0/? |
 | 5 - Analysis Framework | Pending | 0/? |
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 8 - Python Bindings | Pending | 0/? |
 | 9 - WASM Target | Pending | 0/? |
 
-Progress: █░░░░░░░░░ 11%
+Progress: ██░░░░░░░░ 22%
 
 ## Artifacts
 
@@ -52,14 +52,15 @@ Progress: █░░░░░░░░░ 11%
 | Phase 1 Verification | ✓ Passed | `.planning/phases/01-foundation/VERIFICATION.md` |
 | Phase 2 Context | Complete | `.planning/phases/02-text-processing/02-CONTEXT.md` |
 | Phase 2 Research | Complete | `.planning/phases/02-text-processing/02-RESEARCH.md` |
-| Phase 2 Plan 01 | Planned | `.planning/phases/02-text-processing/02-01-PLAN.md` |
-| Phase 2 Plan 02 | Planned | `.planning/phases/02-text-processing/02-02-PLAN.md` |
-| Phase 2 Plan 03 | Planned | `.planning/phases/02-text-processing/02-03-PLAN.md` |
-| Phase 2 Plan 04 | Planned | `.planning/phases/02-text-processing/02-04-PLAN.md` |
-| Phase 2 Plan 05 | Planned | `.planning/phases/02-text-processing/02-05-PLAN.md` |
-| Phase 2 Plan 06 | Planned | `.planning/phases/02-text-processing/02-06-PLAN.md` |
-| Phase 2 Plan 07 | Planned | `.planning/phases/02-text-processing/02-07-PLAN.md` |
-| Phase 2 Plan 08 | Planned | `.planning/phases/02-text-processing/02-08-PLAN.md` |
+| Phase 2 Plan 01 | ✓ Executed | `.planning/phases/02-text-processing/02-01-PLAN.md` |
+| Phase 2 Plan 02 | ✓ Executed | `.planning/phases/02-text-processing/02-02-PLAN.md` |
+| Phase 2 Plan 03 | ✓ Executed | `.planning/phases/02-text-processing/02-03-PLAN.md` |
+| Phase 2 Plan 04 | ✓ Executed | `.planning/phases/02-text-processing/02-04-PLAN.md` |
+| Phase 2 Plan 05 | ✓ Executed | `.planning/phases/02-text-processing/02-05-PLAN.md` |
+| Phase 2 Plan 06 | ✓ Executed | `.planning/phases/02-text-processing/02-06-PLAN.md` |
+| Phase 2 Plan 07 | ✓ Executed | `.planning/phases/02-text-processing/02-07-PLAN.md` |
+| Phase 2 Plan 08 | ✓ Executed | `.planning/phases/02-text-processing/02-08-PLAN.md` |
+| Phase 2 Verification | ✓ Passed | `.planning/phases/02-text-processing/VERIFICATION.md` |
 
 ## Key Decisions Log
 
@@ -71,6 +72,11 @@ Progress: █░░░░░░░░░ 11%
 | TextStore uses Vec<String> not bumpalo arena | Phase 1 | Simpler, Miri-clean; arena optimization deferred if needed |
 | hashbrown needs default-hasher feature | Phase 1 | HashMap::new() requires FoldHash default hasher |
 | proptest 1.6, not 1.10 (doesn't exist) | Phase 1 | Plan specified 1.10 but latest is 1.6 |
+| CharMapping stores original_len | Phase 2 | Unicode case folding changes byte lengths; tokenizers need original text bounds |
+| CharMapping::compose uses nearest-match | Phase 2 | Normalizers that remove chars create gaps in intermediate positions |
+| SentenceTokenizer ignores CharMapping | Phase 2 | Sentence spans reference normalized positions; acceptable tradeoff |
+| WordTokenizer: punctuation stays with words | Phase 2 | "hello," = 1 token, not 2; locked design decision |
+| NGram tokenizers use decorator pattern | Phase 2 | Wrap Box<dyn Tokenizer>, composable with any base tokenizer |
 | PyO3 0.28, not 0.20 as spec says | Pre-impl | 0.20 API (GIL Refs) removed in 0.23; all spec examples must be rewritten |
 | pyo3-async-runtimes replaces pyo3-asyncio | Pre-impl | pyo3-asyncio deprecated and archived |
 | Python >= 3.9, not 3.8 | Pre-impl | 3.8 EOL Oct 2024; pyo3-async-runtimes requires 3.9+ |
@@ -82,12 +88,12 @@ Progress: █░░░░░░░░░ 11%
 
 To continue work on this project:
 
-1. Run `/gsd:execute-phase 2` to execute Phase 2 (Text Processing)
-2. 8 plans in 5 waves: Wave 1 (setup), Wave 2 (4 parallel normalizer/tokenizer TDD), Wave 3 (advanced tokenizers), Wave 4 (pipeline), Wave 5 (integration tests)
-3. Phase 2 depends on Phase 1 types: TextStore, Token, Span, CharMapping
-4. Key risks: Unicode CharMapping for multi-codepoint graphemes, ProcessedText memory
-5. Reference: `.planning/phases/02-text-processing/02-RESEARCH.md`, `02-CONTEXT.md`
+1. Run `/gsd:plan-phase 3` to plan Phase 3 (Diff Computation)
+2. Phase 3 depends on Phase 1 (Token) and Phase 2 (ProcessedText)
+3. Requirements: DiffAlgorithm trait, Myers O(ND), Histogram diff, DiffComputer, EditOperation types, DiffResult
+4. Key risks: Myers O(N^2) cliff on dissimilar texts, EditOperation lifetime design
+5. Success criteria include property test `apply(diff(a,b), a) == b` and <1ms for 100 tokens
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-06 after Phase 1 execution + verification*
+*Last updated: 2026-02-06 after Phase 2 execution + verification*
