@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 3 (Diff Computation) -- Next
-**Last Action:** Phase 2.1 executed + verified (7/7 must-haves)
+**Current Phase:** Phase 3 (Diff Computation) -- Planned (5 plans, 4 waves)
+**Last Action:** Phase 3 planned + verified (checker passed)
 **Updated:** 2026-02-07
 
 ## Project Reference
@@ -21,7 +21,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 1 - Foundation | ✓ Complete | 4/4 |
 | 2 - Text Processing | ✓ Complete | 8/8 |
 | 2.1 - Test Coverage & Simulation | ✓ Complete | 5/5 |
-| 3 - Diff Computation | Pending | 0/? |
+| 3 - Diff Computation | ◆ Planned | 5/5 |
 | 4 - Metrics Engine | Pending | 0/? |
 | 5 - Analysis Framework | Pending | 0/? |
 | 6 - Orchestration & Config | Pending | 0/? |
@@ -69,6 +69,13 @@ Progress: ███░░░░░░░ 30%
 | Phase 2.1 Plan 04 | ✓ Executed | `.planning/phases/02.1-test-coverage-simulation/02.1-04-PLAN.md` |
 | Phase 2.1 Plan 05 | ✓ Executed | `.planning/phases/02.1-test-coverage-simulation/02.1-05-PLAN.md` |
 | Phase 2.1 Verification | ✓ Passed | `.planning/phases/02.1-test-coverage-simulation/02.1-VERIFICATION.md` |
+| Phase 3 Context | Complete | `.planning/phases/03-diff-computation/03-CONTEXT.md` |
+| Phase 3 Research | Complete | `.planning/phases/03-diff-computation/03-RESEARCH.md` |
+| Phase 3 Plan 01 | ○ Ready | `.planning/phases/03-diff-computation/03-01-PLAN.md` |
+| Phase 3 Plan 02 | ○ Ready | `.planning/phases/03-diff-computation/03-02-PLAN.md` |
+| Phase 3 Plan 03 | ○ Ready | `.planning/phases/03-diff-computation/03-03-PLAN.md` |
+| Phase 3 Plan 04 | ○ Ready | `.planning/phases/03-diff-computation/03-04-PLAN.md` |
+| Phase 3 Plan 05 | ○ Ready | `.planning/phases/03-diff-computation/03-05-PLAN.md` |
 
 ## Key Decisions Log
 
@@ -103,11 +110,11 @@ Progress: ███░░░░░░░ 30%
 
 To continue work on this project:
 
-1. Run `/gsd:plan-phase 3` to plan Phase 3 (Diff Computation)
-2. Phase 3 is the core algorithm phase — Myers diff, patience diff, semantic diff
+1. Run `/gsd:execute-phase 3` to execute Phase 3 (Diff Computation)
+2. Phase 3 has 5 plans in 4 waves — foundation, Myers, Histogram, tests+benchmarks
 3. Foundation (Phase 1) and text processing (Phase 2) are solid and well-tested (462 tests)
-4. After Phase 3, proceed to Phase 4 (Metrics Engine)
+4. After Phase 3 execution + verification, proceed to Phase 4 (Metrics Engine)
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 2.1 execution + verification*
+*Last updated: 2026-02-07 after Phase 3 planning + verification*
