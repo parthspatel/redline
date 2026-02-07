@@ -85,20 +85,46 @@ impl CharMapping {
         Err(NormalizeError::InvalidPosition(normalized))
     }
 
+    /// Map an original position to its normalized position, falling back to the
+    /// nearest position if the exact one doesn't exist (e.g., character was removed).
+    ///
+    /// Uses binary search. If the position isn't found, uses the nearest smaller
+    /// position's normalized value.
+    pub fn to_normalized_nearest(&self, original: u32) -> Result<u32, NormalizeError> {
+        match self
+            .alignments
+            .binary_search_by_key(&original, |&(orig, _)| orig)
+        {
+            Ok(idx) => Ok(self.alignments[idx].1),
+            Err(insert_idx) => {
+                // insert_idx is where `original` would be inserted.
+                // Use the preceding entry (nearest smaller position).
+                if insert_idx > 0 {
+                    Ok(self.alignments[insert_idx - 1].1)
+                } else if !self.alignments.is_empty() {
+                    // Position before all entries — use the first
+                    Ok(self.alignments[0].1)
+                } else {
+                    Err(NormalizeError::InvalidPosition(original))
+                }
+            }
+        }
+    }
+
     /// Compose this mapping with another, producing a new mapping that goes
     /// directly from `self`'s original positions to `other`'s normalized positions.
     ///
     /// For each `(orig, mid)` in `self`, looks up `mid` in `other` to find `final_pos`,
-    /// yielding `(orig, final_pos)` in the result.
+    /// yielding `(orig, final_pos)` in the result. If `mid` was removed in `other`
+    /// (no exact match), the nearest valid position is used.
     ///
     /// # Errors
-    /// Returns [`NormalizeError::CompositionFailed`] if any intermediate position
-    /// cannot be found in `other`, or if the result would be empty.
+    /// Returns [`NormalizeError::CompositionFailed`] if the result would be empty.
     pub fn compose(&self, other: &CharMapping) -> Result<CharMapping, NormalizeError> {
         let mut result = Vec::with_capacity(self.alignments.len());
         for &(orig, mid) in &self.alignments {
             let final_pos = other
-                .to_normalized(mid)
+                .to_normalized_nearest(mid)
                 .map_err(|_| NormalizeError::CompositionFailed)?;
             result.push((orig, final_pos));
         }
@@ -258,11 +284,25 @@ mod tests {
     // ── Composition error cases ──────────────────────────────────────
 
     #[test]
-    fn compose_fails_when_intermediate_not_found() {
+    fn compose_uses_nearest_when_intermediate_missing() {
+        // m1 maps orig 0 -> mid 100, but m2 only has orig 0 -> norm 0.
+        // Nearest-match: mid=100 > all m2 entries, so use last entry's norm (0).
         let m1 = CharMapping::new(vec![(0, 100)]).unwrap();
-        let m2 = CharMapping::new(vec![(0, 0)]).unwrap(); // doesn't have 100
-        let result = m1.compose(&m2);
-        assert!(result.is_err());
+        let m2 = CharMapping::new(vec![(0, 0)]).unwrap();
+        let composed = m1.compose(&m2).unwrap();
+        assert_eq!(composed.to_normalized(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn compose_nearest_with_gap() {
+        // m1: orig 0 -> mid 5, orig 1 -> mid 6 (the collapsed char)
+        // m2: orig 5 -> norm 5, orig 7 -> norm 6 (skips 6)
+        // Nearest for mid=6: preceding entry is (5, 5), so use norm=5
+        let m1 = CharMapping::new(vec![(0, 5), (1, 6)]).unwrap();
+        let m2 = CharMapping::new(vec![(5, 5), (7, 6)]).unwrap();
+        let composed = m1.compose(&m2).unwrap();
+        assert_eq!(composed.to_normalized(0).unwrap(), 5);
+        assert_eq!(composed.to_normalized(1).unwrap(), 5); // collapsed to same position
     }
 }
 
