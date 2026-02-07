@@ -154,6 +154,22 @@ mod tests {
         assert_eq!(SentenceTokenizer.name(), "sentence");
     }
 
+    // ── Edge case tests (02.1-03) ────────────────────────────────────
+
+    #[test]
+    fn edge_no_sentence_boundary_no_period() {
+        let (tokens, store) = tokenize_sentences("hello world");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "hello world");
+    }
+
+    #[test]
+    fn edge_single_word_no_punctuation() {
+        let (tokens, store) = tokenize_sentences("Hello");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "Hello");
+    }
+
     #[test]
     fn tokens_interned() {
         let (tokens, _) = tokenize_sentences("Hello. Hello.");

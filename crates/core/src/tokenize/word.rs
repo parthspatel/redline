@@ -226,6 +226,37 @@ mod tests {
     fn name() {
         assert_eq!(WordTokenizer.name(), "word");
     }
+
+    // ── Edge case tests (02.1-03) ────────────────────────────────────
+
+    #[test]
+    fn edge_punctuation_only() {
+        let (tokens, store) = tokenize("!!!");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "!!!");
+    }
+
+    #[test]
+    fn edge_trailing_space_ignored() {
+        let (tokens, store) = tokenize("hello ");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "hello");
+    }
+
+    #[test]
+    fn edge_leading_space_ignored() {
+        let (tokens, store) = tokenize(" hello");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "hello");
+    }
+
+    #[test]
+    fn edge_tab_separator() {
+        let (tokens, store) = tokenize("hello\tworld");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "hello");
+        assert_eq!(store.resolve(tokens[1].text_id).unwrap(), "world");
+    }
 }
 
 #[cfg(test)]

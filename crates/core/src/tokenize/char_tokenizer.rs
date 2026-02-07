@@ -164,6 +164,41 @@ mod tests {
     fn name() {
         assert_eq!(CharTokenizer.name(), "char");
     }
+
+    // ── Edge case tests (02.1-03) ────────────────────────────────────
+
+    #[test]
+    fn edge_single_multibyte_char() {
+        let (tokens, store) = tokenize("\u{00E9}");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "\u{00E9}");
+        assert_eq!(tokens[0].span, Span::new(0, 2));
+    }
+
+    #[test]
+    fn edge_zwj_emoji_standalone() {
+        let text = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        let (tokens, store) = tokenize(text);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), text);
+        assert_eq!(tokens[0].span, Span::new(0, text.len() as u32));
+    }
+
+    #[test]
+    fn edge_very_long_string_1000_chars() {
+        let long: String = core::iter::repeat('a').take(1000).collect();
+        let (tokens, _) = tokenize(&long);
+        assert_eq!(tokens.len(), 1000);
+        assert_eq!(tokens[0].span, Span::new(0, 1));
+        assert_eq!(tokens[999].span, Span::new(999, 1000));
+    }
+
+    #[test]
+    fn edge_whitespace_chars_are_graphemes() {
+        let (tokens, store) = tokenize("   ");
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), " ");
+    }
 }
 
 #[cfg(test)]

@@ -246,6 +246,29 @@ mod tests {
         let (tokens2, _) = char_bigram("abab");
         assert_eq!(tokens2[0].text_id, tokens2[2].text_id); // both "ab"
     }
+
+    // ── Edge case tests (02.1-03) ────────────────────────────────────
+
+    #[test]
+    fn edge_multi_byte_only_bigram() {
+        let (tokens, store) = char_bigram("\u{00E9}\u{00E0}");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(
+            store.resolve(tokens[0].text_id).unwrap(),
+            "\u{00E9}\u{00E0}"
+        );
+        assert_eq!(tokens[0].span, Span::new(0, 4));
+    }
+
+    #[test]
+    fn edge_zwj_emoji_in_ngrams() {
+        let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        let text = format!("a{}", family);
+        let (tokens, store) = char_bigram(&text);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), &text);
+        assert_eq!(tokens[0].span, Span::new(0, text.len() as u32));
+    }
 }
 
 #[cfg(test)]

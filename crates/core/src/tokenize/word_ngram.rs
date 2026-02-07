@@ -198,6 +198,24 @@ mod tests {
             assert_eq!(tok.kind, TokenKind::Regular);
         }
     }
+
+    // ── Edge case tests (02.1-03) ────────────────────────────────────
+
+    #[test]
+    fn edge_n2_on_two_tokens_returns_one_bigram() {
+        let (tokens, store) = ngram_tokenize("hello world", 2);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "hello world");
+    }
+
+    #[test]
+    fn edge_space_joined_text_verified() {
+        let (tokens, store) = ngram_tokenize("the quick brown fox", 2);
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(store.resolve(tokens[0].text_id).unwrap(), "the quick");
+        assert_eq!(store.resolve(tokens[1].text_id).unwrap(), "quick brown");
+        assert_eq!(store.resolve(tokens[2].text_id).unwrap(), "brown fox");
+    }
 }
 
 #[cfg(test)]

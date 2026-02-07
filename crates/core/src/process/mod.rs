@@ -411,4 +411,36 @@ mod tests {
         assert_eq!(result.normalized, "hello world");
         assert_eq!(result.tokens.len(), 2);
     }
+
+    // ── Edge case tests (02.1-03) ────────────────────────────────────
+
+    #[test]
+    fn edge_process_single_char() {
+        let proc = processor_lc_ws();
+        let result = proc.process("A").unwrap();
+        assert_eq!(result.normalized, "a");
+        assert_eq!(result.tokens.len(), 1);
+        assert_eq!(
+            result.text_store.resolve(result.tokens[0].text_id).unwrap(),
+            "a"
+        );
+    }
+
+    #[test]
+    fn edge_process_called_twice_is_reusable() {
+        let proc = processor_lc_ws();
+        let r1 = proc.process("Hello World").unwrap();
+        let r2 = proc.process("Foo Bar").unwrap();
+        assert_eq!(r1.tokens.len(), 2);
+        assert_eq!(r2.tokens.len(), 2);
+        assert_eq!(r1.normalized, "hello world");
+        assert_eq!(r2.normalized, "foo bar");
+    }
+
+    #[test]
+    fn edge_composed_mapping_present_with_normalizers() {
+        let proc = processor_lc_ws();
+        let result = proc.process("Hello").unwrap();
+        assert!(result.composed_mapping.is_some());
+    }
 }
