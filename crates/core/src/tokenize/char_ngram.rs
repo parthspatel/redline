@@ -252,6 +252,7 @@ mod tests {
 mod proptests {
     use super::*;
     use proptest::prelude::*;
+    use unicode_segmentation::UnicodeSegmentation;
 
     proptest! {
         #[test]

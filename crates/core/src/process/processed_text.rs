@@ -1,14 +1,14 @@
 //! ProcessedText: result of the full text processing pipeline.
 
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
 use core::fmt;
 
 use crate::char_mapping::CharMapping;
-use crate::error::NormalizeError;
+use crate::error::ProcessError;
 use crate::text_store::TextStore;
 use crate::token::Token;
 
@@ -24,8 +24,8 @@ pub struct ProcessedText {
     pub normalized: String,
     /// Tokens produced from the final normalized text.
     pub tokens: Vec<Token>,
-    /// Composed CharMapping: original -> final normalized.
-    pub composed_mapping: CharMapping,
+    /// Composed CharMapping: original -> final normalized. None if no normalizers ran.
+    pub composed_mapping: Option<CharMapping>,
     /// Text store containing all interned strings.
     pub text_store: Arc<TextStore>,
     /// Names of normalizers configured but NOT stored (Minimal mode).
@@ -51,26 +51,33 @@ impl fmt::Debug for ProcessedText {
 
 impl ProcessedText {
     /// Look up a layer by normalizer name.
+    #[inline]
     pub fn layer(&self, name: &str) -> Option<&NormalizationLayer> {
         self.layers.iter().find(|l| l.name == name)
     }
 
-    /// Get composed CharMapping from original to a specific named layer.
-    pub fn mapping_to_layer(&self, name: &str) -> Result<CharMapping, NormalizeError> {
-        let idx = self
+    /// Compute the composed CharMapping from original text to the output
+    /// of the named normalization layer.
+    pub fn mapping_to_layer(&self, name: &str) -> Result<CharMapping, ProcessError> {
+        let target_idx = self
             .layers
             .iter()
             .position(|l| l.name == name)
-            .ok_or(NormalizeError::InvalidPosition(0))?;
+            .ok_or_else(|| ProcessError::LayerNotFound(name.to_string()))?;
 
-        if idx == 0 {
-            return Ok(self.layers[0].mapping.clone());
+        let mut composed: Option<CharMapping> = None;
+        for layer in &self.layers[..=target_idx] {
+            composed = Some(match composed {
+                None => layer.mapping.clone(),
+                Some(prev) => prev.compose(&layer.mapping).map_err(|source| {
+                    ProcessError::NormalizationFailed {
+                        normalizer: layer.name.clone(),
+                        source,
+                    }
+                })?,
+            });
         }
 
-        let mut composed = self.layers[0].mapping.clone();
-        for layer in &self.layers[1..=idx] {
-            composed = composed.compose(&layer.mapping)?;
-        }
-        Ok(composed)
+        composed.ok_or_else(|| ProcessError::LayerNotFound(name.to_string()))
     }
 }
