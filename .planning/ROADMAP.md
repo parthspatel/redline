@@ -99,6 +99,45 @@ Applied to every phase:
 
 ---
 
+## Phase 2.1: Test Coverage Enhancement & Deterministic Simulation Testing (INSERTED)
+
+**Goal:** Harden Phase 1+2 code with comprehensive edge case coverage, improved integration tests, and seed-based deterministic simulation testing for reproducible fuzz-style discovery.
+
+**Requirements:**
+
+| ID | Description |
+|----|-------------|
+| TEST-01 | Review all public methods and ensure edge case coverage in unit tests |
+| TEST-02 | Enhance unit tests: boundary conditions, error paths, empty/huge inputs |
+| TEST-03 | Improve integration tests to be comprehensive across normalizer/tokenizer combinations |
+| TEST-04 | Deterministic simulation testing framework: seed-based, reproducible, replayable |
+| TEST-05 | Simulation test suites for CharMapping, normalizers, tokenizers, and full pipeline |
+
+**Dependencies:** Phase 2 (all Phase 1+2 code exists to test)
+
+**Key Risks:**
+- Simulation framework design: proptest already provides seeded testing — determine if custom framework needed or proptest config suffices
+- Test combinatorial explosion: 6 normalizers x 5 tokenizers = 30 combos; need smart selection not exhaustive
+
+**Success Criteria:**
+1. Every public method has at least one edge case test (empty input, single char, max-length, Unicode boundary)
+2. Integration tests cover all normalizer-tokenizer combinations that make semantic sense
+3. Deterministic simulation: run N random scenarios from seed S, replay any failure with just the seed
+4. Running `cargo test` with `PROPTEST_CASES=10000` finds zero new failures
+5. All simulation failures are reproducible: `SIMULATION_SEED=X cargo test` replays exact scenario
+
+**Plans:** 5 plans in 1 wave
+
+| Plan | Wave | Type | Description | Depends On |
+|------|------|------|-------------|------------|
+| 02.1-01 | 1 | execute | Core type edge case tests (Span, Token, TextStore, CharMapping, Error) | -- |
+| 02.1-02 | 1 | execute | Normalizer edge case tests (all 6) | -- |
+| 02.1-03 | 1 | execute | Tokenizer + process edge case tests | -- |
+| 02.1-04 | 1 | execute | Normalizer x tokenizer integration matrix | -- |
+| 02.1-05 | 1 | execute | Deterministic simulation testing (proptest) | -- |
+
+---
+
 ## Phase 3: Diff Computation
 
 **Goal:** Given two ProcessedTexts, compute a correct, performant edit script with configurable algorithm selection.
@@ -327,6 +366,7 @@ Applied to every phase:
 |-------|------|------|--------|-------------|
 | 1 | Foundation | 8 | ✓ Complete | None (BLOCKING) |
 | 2 | Text Processing | 8 | ✓ Complete | Phase 1 |
+| 2.1 | Test Coverage & Simulation | 5 | Planned | Phase 2 (INSERTED) |
 | 3 | Diff Computation | 9 | Pending | Phase 1, 2 |
 | 4 | Metrics Engine | 6 | Pending | Phase 1, 2, 3 |
 | 5 | Analysis Framework | 8 | Pending | Phase 3, 4 |

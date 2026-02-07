@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 3 (Diff Computation) -- Next
-**Last Action:** Phase 2 executed (8 plans, 5 waves) + verified (8/8 pass)
+**Current Phase:** Phase 2.1 (Test Coverage & Simulation) -- Next
+**Last Action:** Phase 2.1 inserted after Phase 2 for test hardening
 **Updated:** 2026-02-06
 
 ## Project Reference
@@ -12,7 +12,7 @@
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 3 -- Diff Computation (next)
+**Current focus:** Phase 2.1 -- Test Coverage & Simulation (next)
 
 ## Progress
 
@@ -20,6 +20,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 |-------|--------|-------|
 | 1 - Foundation | ✓ Complete | 4/4 |
 | 2 - Text Processing | ✓ Complete | 8/8 |
+| 2.1 - Test Coverage & Simulation | Pending | 0/? |
 | 3 - Diff Computation | Pending | 0/? |
 | 4 - Metrics Engine | Pending | 0/? |
 | 5 - Analysis Framework | Pending | 0/? |
@@ -84,15 +85,20 @@ Progress: ██░░░░░░░░ 22%
 | parking_lot::RwLock for CacheManager | Pre-impl | std::sync::RwLock has write starvation and deadlock risks |
 | wasm-bindgen CLI, not wasm-pack | Pre-impl | wasm-pack archived July 2025 |
 
+## Roadmap Evolution
+
+- Phase 2.1 inserted after Phase 2: Test Coverage Enhancement & Deterministic Simulation Testing (URGENT)
+  - Reason: Harden Phase 1+2 code before building diff computation on top
+
 ## Context for Next Session
 
 To continue work on this project:
 
-1. Run `/gsd:plan-phase 3` to plan Phase 3 (Diff Computation)
-2. Phase 3 depends on Phase 1 (Token) and Phase 2 (ProcessedText)
-3. Requirements: DiffAlgorithm trait, Myers O(ND), Histogram diff, DiffComputer, EditOperation types, DiffResult
-4. Key risks: Myers O(N^2) cliff on dissimilar texts, EditOperation lifetime design
-5. Success criteria include property test `apply(diff(a,b), a) == b` and <1ms for 100 tokens
+1. Run `/gsd:plan-phase 2.1` to plan Phase 2.1 (Test Coverage & Simulation)
+2. Scope: review all methods, enhance unit test edge cases, comprehensive integration tests, seed-based simulation testing
+3. Phase 2.1 tests Phase 1+2 code: CharMapping, TextStore, Span, Token, all normalizers, all tokenizers, TextProcessor pipeline
+4. Key design question: leverage proptest's existing seed infrastructure vs. custom simulation framework
+5. After 2.1, proceed to Phase 3 (Diff Computation)
 
 ---
 *State initialized: 2026-02-06*
