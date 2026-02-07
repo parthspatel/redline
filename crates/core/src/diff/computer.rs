@@ -20,12 +20,17 @@ pub struct DiffComputer {
 }
 
 impl DiffComputer {
+    /// Create a DiffComputer with the default Myers algorithm.
+    pub fn new() -> Self {
+        Self {
+            algorithm: Box::new(super::myers::Myers::new()),
+        }
+    }
+
     /// Create a DiffComputer with a specific algorithm.
     pub fn with_algorithm(algorithm: Box<dyn DiffAlgorithm>) -> Self {
         Self { algorithm }
     }
-
-    // TODO(plan-02): Add new() with Myers default and Default impl.
 
     /// Compute a diff between two processed texts.
     pub fn compute(
@@ -62,6 +67,12 @@ impl DiffComputer {
             source,
             target,
         })
+    }
+}
+
+impl Default for DiffComputer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -182,5 +193,29 @@ mod tests {
         let result = computer.compute(source, target, None).unwrap();
         assert!((result.similarity() - 1.0).abs() < f64::EPSILON);
         assert!(result.operations.is_empty());
+    }
+
+    #[test]
+    fn new_uses_myers_default() {
+        let computer = DiffComputer::new();
+        assert_eq!(computer.algorithm.name(), "myers");
+    }
+
+    #[test]
+    fn default_uses_myers() {
+        let computer = DiffComputer::default();
+        assert_eq!(computer.algorithm.name(), "myers");
+    }
+
+    #[test]
+    fn new_computes_correct_diff() {
+        let computer = DiffComputer::new();
+        let source = make_processed("hello world", &["hello", "world"]);
+        let target = make_processed("hello earth", &["hello", "earth"]);
+
+        let result = computer.compute(source, target, None).unwrap();
+        assert_eq!(result.metadata.algorithm_name, "myers");
+        assert_eq!(result.statistics.equal_count, 1);
+        assert_eq!(result.statistics.replace_count, 1);
     }
 }

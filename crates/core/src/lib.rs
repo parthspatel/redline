@@ -20,7 +20,9 @@ pub mod token;
 pub mod tokenize;
 
 pub use char_mapping::CharMapping;
-pub use diff::{DiffAlgorithm, DiffComputer, DiffError, DiffResult, EditKind, EditOperation};
+pub use diff::{
+    DiffAlgorithm, DiffComputer, DiffError, DiffResult, EditKind, EditOperation, Myers,
+};
 pub use error::RedlineError;
 pub use normalize::{NormalizationResult, Normalizer};
 pub use process::{ExecutionMode, NormalizationLayer, ProcessedText, TextProcessor};
