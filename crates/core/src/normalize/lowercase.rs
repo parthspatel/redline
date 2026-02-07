@@ -1,0 +1,144 @@
+//! Lowercase normalizer with byte-offset CharMapping.
+
+#[cfg(not(feature = "std"))]
+use alloc::{string::String, vec::Vec};
+
+use crate::char_mapping::CharMapping;
+use crate::error::NormalizeError;
+
+use super::{NormalizationResult, Normalizer};
+
+/// Lowercases all Unicode characters, tracking byte offset changes in CharMapping.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Lowercase;
+
+impl Normalizer for Lowercase {
+    fn normalize(&self, input: &str) -> Result<NormalizationResult, NormalizeError> {
+        if input.is_empty() {
+            return Err(NormalizeError::EmptyInput);
+        }
+
+        let mut normalized = String::with_capacity(input.len());
+        let mut alignments = Vec::new();
+        let mut norm_byte_offset: u32 = 0;
+
+        for (orig_byte_offset, ch) in input.char_indices() {
+            for lower_ch in ch.to_lowercase() {
+                alignments.push((orig_byte_offset as u32, norm_byte_offset));
+                normalized.push(lower_ch);
+                norm_byte_offset += lower_ch.len_utf8() as u32;
+            }
+        }
+
+        let mapping = CharMapping::new(alignments).map_err(|_| NormalizeError::InvalidMapping)?;
+        Ok(NormalizationResult {
+            text: normalized,
+            mapping,
+        })
+    }
+
+    fn name(&self) -> &str {
+        "lowercase"
+    }
+
+    fn cost(&self) -> f32 {
+        0.1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn normalize(input: &str) -> NormalizationResult {
+        Lowercase.normalize(input).unwrap()
+    }
+
+    #[test]
+    fn lowercase_ascii() {
+        let r = normalize("Hello World");
+        assert_eq!(r.text, "hello world");
+        // Round-trip all positions
+        for i in 0..r.text.len() as u32 {
+            let orig = r.mapping.to_original(i).unwrap();
+            let back = r.mapping.to_normalized(orig).unwrap();
+            assert_eq!(back, i);
+        }
+    }
+
+    #[test]
+    fn lowercase_german() {
+        let r = normalize("STRASSE");
+        assert_eq!(r.text, "strasse");
+    }
+
+    #[test]
+    fn lowercase_sharp_s_unchanged() {
+        let r = normalize("Straße");
+        assert_eq!(r.text, "straße");
+    }
+
+    #[test]
+    fn lowercase_accented() {
+        let r = normalize("Über");
+        assert_eq!(r.text, "über");
+    }
+
+    #[test]
+    fn lowercase_cjk_noop() {
+        let r = normalize("你好世界");
+        assert_eq!(r.text, "你好世界");
+    }
+
+    #[test]
+    fn lowercase_emoji_noop() {
+        let r = normalize("😀🎉");
+        assert_eq!(r.text, "😀🎉");
+    }
+
+    #[test]
+    fn lowercase_empty_input() {
+        let err = Lowercase.normalize("").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn lowercase_already_lowercase() {
+        let r = normalize("hello");
+        assert_eq!(r.text, "hello");
+    }
+
+    #[test]
+    fn lowercase_name_and_cost() {
+        let n = Lowercase;
+        assert_eq!(n.name(), "lowercase");
+        assert!((n.cost() - 0.1).abs() < f32::EPSILON);
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn lowercase_idempotent(s in "\\PC{1,100}") {
+            let r1 = Lowercase.normalize(&s);
+            if let Ok(r1) = r1 {
+                let r2 = Lowercase.normalize(&r1.text).unwrap();
+                prop_assert_eq!(r1.text, r2.text);
+            }
+        }
+
+        #[test]
+        fn lowercase_mapping_round_trips(s in "[A-Za-z\\p{L}]{1,50}") {
+            let r = Lowercase.normalize(&s).unwrap();
+            // Every normalized char boundary should map back to a valid original position
+            for (norm_byte, _) in r.text.char_indices() {
+                let orig = r.mapping.to_original(norm_byte as u32);
+                prop_assert!(orig.is_ok(), "Failed to map normalized pos {} back", norm_byte);
+            }
+        }
+    }
+}
