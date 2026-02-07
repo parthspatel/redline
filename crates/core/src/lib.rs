@@ -11,12 +11,18 @@ compile_error!("Features `python` and `wasm` are mutually exclusive.");
 
 pub mod char_mapping;
 pub mod error;
+pub mod normalize;
+pub mod process;
 pub mod span;
 pub mod text_store;
 pub mod token;
+pub mod tokenize;
 
 pub use char_mapping::CharMapping;
 pub use error::RedlineError;
+pub use normalize::{NormalizationResult, Normalizer};
+pub use process::{ExecutionMode, NormalizationLayer, ProcessedText, TextProcessor};
 pub use span::Span;
 pub use text_store::{StringId, TextStore, TextStoreBuilder};
 pub use token::{Token, TokenKind};
+pub use tokenize::Tokenizer;
