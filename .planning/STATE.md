@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 1 (Foundation) -- Complete
-**Last Action:** Phase 1 executed (4/4 plans, 3 waves), verified (22/22 must-haves)
+**Current Phase:** Phase 2 (Text Processing) -- Planned
+**Last Action:** Phase 2 planned (8 plans, 5 waves), pending verification
 **Updated:** 2026-02-06
 
 ## Project Reference
@@ -19,7 +19,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 1 - Foundation | ✓ Complete | 4/4 |
-| 2 - Text Processing | Pending | 0/? |
+| 2 - Text Processing | Planned | 8/8 |
 | 3 - Diff Computation | Pending | 0/? |
 | 4 - Metrics Engine | Pending | 0/? |
 | 5 - Analysis Framework | Pending | 0/? |
@@ -50,6 +50,16 @@ Progress: █░░░░░░░░░ 11%
 | Phase 1 Plan 03 | ✓ Executed | `.planning/phases/01-foundation/01-03-PLAN.md` |
 | Phase 1 Plan 04 | ✓ Executed | `.planning/phases/01-foundation/01-04-PLAN.md` |
 | Phase 1 Verification | ✓ Passed | `.planning/phases/01-foundation/VERIFICATION.md` |
+| Phase 2 Context | Complete | `.planning/phases/02-text-processing/02-CONTEXT.md` |
+| Phase 2 Research | Complete | `.planning/phases/02-text-processing/02-RESEARCH.md` |
+| Phase 2 Plan 01 | Planned | `.planning/phases/02-text-processing/02-01-PLAN.md` |
+| Phase 2 Plan 02 | Planned | `.planning/phases/02-text-processing/02-02-PLAN.md` |
+| Phase 2 Plan 03 | Planned | `.planning/phases/02-text-processing/02-03-PLAN.md` |
+| Phase 2 Plan 04 | Planned | `.planning/phases/02-text-processing/02-04-PLAN.md` |
+| Phase 2 Plan 05 | Planned | `.planning/phases/02-text-processing/02-05-PLAN.md` |
+| Phase 2 Plan 06 | Planned | `.planning/phases/02-text-processing/02-06-PLAN.md` |
+| Phase 2 Plan 07 | Planned | `.planning/phases/02-text-processing/02-07-PLAN.md` |
+| Phase 2 Plan 08 | Planned | `.planning/phases/02-text-processing/02-08-PLAN.md` |
 
 ## Key Decisions Log
 
@@ -72,10 +82,11 @@ Progress: █░░░░░░░░░ 11%
 
 To continue work on this project:
 
-1. Run `/gsd:plan-phase 2` to plan Phase 2 (Text Processing)
-2. Phase 2 depends on Phase 1 types: TextStore, Token, Span, CharMapping
-3. Key risks for Phase 2: Unicode CharMapping for multi-codepoint graphemes, ProcessedText memory
-4. Reference: `docs/design/DESIGN.md`, `docs/design/TECHNICAL_SPEC.md`, `.planning/research/PITFALLS.md`
+1. Run `/gsd:execute-phase 2` to execute Phase 2 (Text Processing)
+2. 8 plans in 5 waves: Wave 1 (setup), Wave 2 (4 parallel normalizer/tokenizer TDD), Wave 3 (advanced tokenizers), Wave 4 (pipeline), Wave 5 (integration tests)
+3. Phase 2 depends on Phase 1 types: TextStore, Token, Span, CharMapping
+4. Key risks: Unicode CharMapping for multi-codepoint graphemes, ProcessedText memory
+5. Reference: `.planning/phases/02-text-processing/02-RESEARCH.md`, `02-CONTEXT.md`
 
 ---
 *State initialized: 2026-02-06*

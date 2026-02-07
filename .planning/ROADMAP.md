@@ -84,6 +84,19 @@ Applied to every phase:
 4. TextProcessor pipeline: raw text -> 3 normalizers -> WordTokenizer -> ProcessedText with valid spans
 5. All normalizer CharMappings compose correctly for accented characters and combining characters
 
+**Plans:** 8 plans in 5 waves
+
+| Plan | Wave | Type | Description | Depends On |
+|------|------|------|-------------|------------|
+| 02-01 | 1 | execute | Setup: deps, modules, traits, errors | — |
+| 02-02 | 2 | tdd | Lowercase + WhitespaceNormalizer | 02-01 |
+| 02-03 | 2 | tdd | UnicodeNormalizer + RemoveDiacritics | 02-01 |
+| 02-04 | 2 | tdd | RemovePunctuation + RemoveDigits | 02-01 |
+| 02-05 | 2 | tdd | CharTokenizer + WordTokenizer | 02-01 |
+| 02-06 | 3 | tdd | SentenceTokenizer + NGram tokenizers | 02-05 |
+| 02-07 | 4 | tdd | TextProcessor + ProcessedText pipeline | 02-02..06 |
+| 02-08 | 5 | execute | Integration tests + Unicode edge cases | all |
+
 ---
 
 ## Phase 3: Diff Computation
