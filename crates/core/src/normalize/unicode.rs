@@ -82,7 +82,7 @@ fn build_normalization_mapping(
         return Err(NormalizeError::InvalidMapping);
     }
 
-    CharMapping::new(alignments).map_err(|_| NormalizeError::InvalidMapping)
+    CharMapping::new(alignments, original.len() as u32).map_err(|_| NormalizeError::InvalidMapping)
 }
 
 impl Normalizer for UnicodeNormalizer {

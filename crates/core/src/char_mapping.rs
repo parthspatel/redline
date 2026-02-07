@@ -20,22 +20,28 @@ use crate::error::NormalizeError;
 pub struct CharMapping {
     /// Sorted alignment pairs: (original_position, normalized_position).
     alignments: Vec<(u32, u32)>,
+    /// Byte length of the original text. Used by tokenizers for end-of-text bounds.
+    original_len: u32,
 }
 
 impl CharMapping {
-    /// Create a new `CharMapping` from a list of `(original, normalized)` pairs.
+    /// Create a new `CharMapping` from a list of `(original, normalized)` pairs
+    /// and the byte lengths of both texts.
     ///
     /// The pairs are sorted by original position for efficient lookup.
     ///
     /// # Errors
     /// Returns [`NormalizeError::CompositionFailed`] if `alignments` is empty.
-    pub fn new(mut alignments: Vec<(u32, u32)>) -> Result<Self, NormalizeError> {
+    pub fn new(mut alignments: Vec<(u32, u32)>, original_len: u32) -> Result<Self, NormalizeError> {
         if alignments.is_empty() {
             return Err(NormalizeError::CompositionFailed);
         }
         // Sort by original position (first element) for binary search in to_normalized.
         alignments.sort_unstable_by_key(|&(orig, _)| orig);
-        Ok(Self { alignments })
+        Ok(Self {
+            alignments,
+            original_len,
+        })
     }
 
     /// Create an identity mapping for text of the given length.
@@ -50,7 +56,10 @@ impl CharMapping {
             return Err(NormalizeError::CompositionFailed);
         }
         let alignments: Vec<(u32, u32)> = (0..len).map(|i| (i, i)).collect();
-        Ok(Self { alignments })
+        Ok(Self {
+            alignments,
+            original_len: len,
+        })
     }
 
     /// Map an original position to its normalized position.
@@ -128,7 +137,8 @@ impl CharMapping {
                 .map_err(|_| NormalizeError::CompositionFailed)?;
             result.push((orig, final_pos));
         }
-        CharMapping::new(result)
+        // Composed mapping preserves original text's byte length
+        CharMapping::new(result, self.original_len)
     }
 
     /// Returns the number of alignment pairs.
@@ -147,6 +157,12 @@ impl CharMapping {
     #[inline]
     pub fn alignments(&self) -> &[(u32, u32)] {
         &self.alignments
+    }
+
+    /// Returns the byte length of the original text.
+    #[inline]
+    pub fn original_len(&self) -> u32 {
+        self.original_len
     }
 }
 
@@ -171,7 +187,7 @@ mod tests {
     fn new_with_simple_offset() {
         // Normalization shifted every position by +2
         let pairs = vec![(0, 2), (1, 3), (2, 4), (3, 5)];
-        let mapping = CharMapping::new(pairs).unwrap();
+        let mapping = CharMapping::new(pairs, 4).unwrap();
         assert_eq!(mapping.len(), 4);
 
         assert_eq!(mapping.to_normalized(0).unwrap(), 2);
@@ -182,7 +198,7 @@ mod tests {
 
     #[test]
     fn empty_alignments_returns_error() {
-        let result = CharMapping::new(vec![]);
+        let result = CharMapping::new(vec![], 0);
         assert!(result.is_err());
     }
 
@@ -197,7 +213,7 @@ mod tests {
     #[test]
     fn alignments_returns_underlying_pairs() {
         let pairs = vec![(0, 0), (1, 2), (2, 4)];
-        let mapping = CharMapping::new(pairs.clone()).unwrap();
+        let mapping = CharMapping::new(pairs.clone(), 3).unwrap();
         assert_eq!(mapping.alignments(), &pairs[..]);
     }
 
@@ -228,9 +244,9 @@ mod tests {
     #[test]
     fn compose_two_mappings() {
         // First normalization: shift +1
-        let m1 = CharMapping::new(vec![(0, 1), (1, 2), (2, 3)]).unwrap();
+        let m1 = CharMapping::new(vec![(0, 1), (1, 2), (2, 3)], 3).unwrap();
         // Second normalization: shift +10
-        let m2 = CharMapping::new(vec![(1, 11), (2, 12), (3, 13)]).unwrap();
+        let m2 = CharMapping::new(vec![(1, 11), (2, 12), (3, 13)], 4).unwrap();
 
         let composed = m1.compose(&m2).unwrap();
         assert_eq!(composed.len(), 3);
@@ -252,13 +268,13 @@ mod tests {
     fn compose_three_mappings_round_trip() {
         // Step 1: original positions 0..5
         // Normalization A: strip leading char -> shift by -1 (but we model as new positions)
-        let a = CharMapping::new(vec![(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]).unwrap();
+        let a = CharMapping::new(vec![(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)], 5).unwrap();
 
         // Normalization B: double spacing -> positions *2
-        let b = CharMapping::new(vec![(0, 0), (1, 2), (2, 4), (3, 6), (4, 8)]).unwrap();
+        let b = CharMapping::new(vec![(0, 0), (1, 2), (2, 4), (3, 6), (4, 8)], 5).unwrap();
 
         // Normalization C: add prefix of length 3 -> shift +3
-        let c = CharMapping::new(vec![(0, 3), (2, 5), (4, 7), (6, 9), (8, 11)]).unwrap();
+        let c = CharMapping::new(vec![(0, 3), (2, 5), (4, 7), (6, 9), (8, 11)], 9).unwrap();
 
         // Compose: a -> b -> c
         let ab = a.compose(&b).unwrap();
@@ -287,8 +303,8 @@ mod tests {
     fn compose_uses_nearest_when_intermediate_missing() {
         // m1 maps orig 0 -> mid 100, but m2 only has orig 0 -> norm 0.
         // Nearest-match: mid=100 > all m2 entries, so use last entry's norm (0).
-        let m1 = CharMapping::new(vec![(0, 100)]).unwrap();
-        let m2 = CharMapping::new(vec![(0, 0)]).unwrap();
+        let m1 = CharMapping::new(vec![(0, 100)], 1).unwrap();
+        let m2 = CharMapping::new(vec![(0, 0)], 101).unwrap();
         let composed = m1.compose(&m2).unwrap();
         assert_eq!(composed.to_normalized(0).unwrap(), 0);
     }
@@ -298,8 +314,8 @@ mod tests {
         // m1: orig 0 -> mid 5, orig 1 -> mid 6 (the collapsed char)
         // m2: orig 5 -> norm 5, orig 7 -> norm 6 (skips 6)
         // Nearest for mid=6: preceding entry is (5, 5), so use norm=5
-        let m1 = CharMapping::new(vec![(0, 5), (1, 6)]).unwrap();
-        let m2 = CharMapping::new(vec![(5, 5), (7, 6)]).unwrap();
+        let m1 = CharMapping::new(vec![(0, 5), (1, 6)], 2).unwrap();
+        let m2 = CharMapping::new(vec![(5, 5), (7, 6)], 8).unwrap();
         let composed = m1.compose(&m2).unwrap();
         assert_eq!(composed.to_normalized(0).unwrap(), 5);
         assert_eq!(composed.to_normalized(1).unwrap(), 5); // collapsed to same position
@@ -339,7 +355,8 @@ mod proptests {
                 return Ok(());
             }
 
-            let mapping = CharMapping::new(unique_pairs).unwrap();
+            let max_orig = unique_pairs.iter().map(|(a, _)| *a).max().unwrap();
+            let mapping = CharMapping::new(unique_pairs, max_orig + 1).unwrap();
 
             // Build identity that covers all normalized positions
             let max_norm = mapping.alignments().iter().map(|(_, n)| *n).max().unwrap();

@@ -42,8 +42,9 @@ impl Tokenizer for CharTokenizer {
                 .to_original(start)
                 .map_err(|_| TokenizeError::Failed("CharMapping lookup failed".into()))?;
             let orig_end = if end as usize == text.len() {
-                // For the last grapheme, use the last alignment's original + length
-                orig_start + grapheme.len() as u32
+                // For the last grapheme, use the original text's byte length
+                // (grapheme.len() may differ from original byte length due to case folding)
+                mapping.original_len()
             } else {
                 mapping
                     .to_original(end)

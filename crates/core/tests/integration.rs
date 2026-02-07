@@ -58,7 +58,7 @@ fn criterion_3_char_mapping_compose_round_trip() {
     // Step 1: Remove leading whitespace (shift positions left by 2)
     //   "  Hello World" -> "Hello World"
     //   orig 2->norm 0, orig 3->norm 1, ... orig 12->norm 10
-    let m1 = CharMapping::new((0..11).map(|i| (i + 2, i)).collect()).unwrap();
+    let m1 = CharMapping::new((0..11).map(|i| (i + 2, i)).collect(), 13).unwrap();
 
     // Step 2: Lowercase (identity mapping, positions don't change)
     //   "Hello World" -> "hello world"

@@ -57,7 +57,8 @@ impl Normalizer for RemoveDiacritics {
         alignments.sort_unstable();
         alignments.dedup();
 
-        let mapping = CharMapping::new(alignments).map_err(|_| NormalizeError::InvalidMapping)?;
+        let mapping = CharMapping::new(alignments, input.len() as u32)
+            .map_err(|_| NormalizeError::InvalidMapping)?;
         Ok(NormalizationResult {
             text: result,
             mapping,

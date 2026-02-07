@@ -36,7 +36,14 @@ impl Tokenizer for WordTokenizer {
             if ch.is_whitespace() {
                 if let Some(start) = word_start.take() {
                     let word = &text[start..byte_offset];
-                    let token = make_token(word, start as u32, byte_offset as u32, mapping, store)?;
+                    let token = make_token(
+                        word,
+                        start as u32,
+                        byte_offset as u32,
+                        mapping,
+                        store,
+                        false,
+                    )?;
                     tokens.push(token);
                 }
             } else if word_start.is_none() {
@@ -47,7 +54,7 @@ impl Tokenizer for WordTokenizer {
         // Flush last word
         if let Some(start) = word_start {
             let word = &text[start..];
-            let token = make_token(word, start as u32, text.len() as u32, mapping, store)?;
+            let token = make_token(word, start as u32, text.len() as u32, mapping, store, true)?;
             tokens.push(token);
         }
 
@@ -66,28 +73,21 @@ fn make_token(
     norm_end: u32,
     mapping: &CharMapping,
     store: &mut TextStoreBuilder,
+    is_last: bool,
 ) -> Result<Token, TokenizeError> {
     let orig_start = mapping
         .to_original(norm_start)
         .map_err(|_| TokenizeError::Failed("CharMapping lookup failed".into()))?;
 
-    // For end position: map the byte just before end, then add its char length
-    let orig_end = if norm_end as usize > 0 {
-        // Map the start of the last character to original, then add the word's byte length
-        // This handles cases where mapping is identity (common case) efficiently
-        let last_char_norm_start = norm_end
-            - word.as_bytes().last().map_or(1, |_| {
-                // Find byte length of last char
-                let last_char = word.chars().next_back().unwrap();
-                last_char.len_utf8() as u32
-            });
-        let orig_last = mapping
-            .to_original(last_char_norm_start)
-            .map_err(|_| TokenizeError::Failed("CharMapping lookup failed".into()))?;
-        let last_char = word.chars().next_back().unwrap();
-        orig_last + last_char.len_utf8() as u32
+    // For end position: if this is the last token, use original text length
+    // to handle byte-length changes from case folding (e.g., Ⱥ 2 bytes → ⱥ 3 bytes).
+    // Otherwise, map the normalized end position to original.
+    let orig_end = if is_last {
+        mapping.original_len()
     } else {
-        orig_start
+        mapping
+            .to_original(norm_end)
+            .map_err(|_| TokenizeError::Failed("CharMapping lookup failed".into()))?
     };
 
     let id = store.intern(word);
