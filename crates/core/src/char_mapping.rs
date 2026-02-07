@@ -320,6 +320,136 @@ mod tests {
         assert_eq!(composed.to_normalized(0).unwrap(), 5);
         assert_eq!(composed.to_normalized(1).unwrap(), 5); // collapsed to same position
     }
+
+    // ── Edge case tests (02.1-01) ───────────────────────────────────
+
+    #[test]
+    fn edge_single_alignment_pair() {
+        let mapping = CharMapping::new(vec![(0, 0)], 1).unwrap();
+        assert_eq!(mapping.len(), 1);
+        assert_eq!(mapping.to_normalized(0).unwrap(), 0);
+        assert_eq!(mapping.to_original(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_identity_single_char() {
+        let mapping = CharMapping::identity(1).unwrap();
+        assert_eq!(mapping.len(), 1);
+        assert_eq!(mapping.to_normalized(0).unwrap(), 0);
+        assert_eq!(mapping.to_original(0).unwrap(), 0);
+        assert_eq!(mapping.original_len(), 1);
+    }
+
+    #[test]
+    fn edge_to_original_first_position() {
+        let mapping = CharMapping::new(vec![(0, 10), (1, 11), (2, 12)], 3).unwrap();
+        assert_eq!(mapping.to_original(10).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_to_original_last_position() {
+        let mapping = CharMapping::new(vec![(0, 10), (1, 11), (2, 12)], 3).unwrap();
+        assert_eq!(mapping.to_original(12).unwrap(), 2);
+    }
+
+    #[test]
+    fn edge_to_normalized_first_position() {
+        let mapping = CharMapping::new(vec![(0, 10), (1, 11), (2, 12)], 3).unwrap();
+        assert_eq!(mapping.to_normalized(0).unwrap(), 10);
+    }
+
+    #[test]
+    fn edge_to_normalized_last_position() {
+        let mapping = CharMapping::new(vec![(0, 10), (1, 11), (2, 12)], 3).unwrap();
+        assert_eq!(mapping.to_normalized(2).unwrap(), 12);
+    }
+
+    #[test]
+    fn edge_to_normalized_nearest_before_all() {
+        let mapping = CharMapping::new(vec![(5, 10), (6, 11), (7, 12)], 8).unwrap();
+        assert_eq!(mapping.to_normalized_nearest(0).unwrap(), 10);
+    }
+
+    #[test]
+    fn edge_to_normalized_nearest_between_entries() {
+        let mapping = CharMapping::new(vec![(2, 20), (4, 40)], 5).unwrap();
+        assert_eq!(mapping.to_normalized_nearest(3).unwrap(), 20);
+    }
+
+    #[test]
+    fn edge_to_normalized_nearest_after_all() {
+        let mapping = CharMapping::new(vec![(0, 10), (1, 11)], 2).unwrap();
+        assert_eq!(mapping.to_normalized_nearest(99).unwrap(), 11);
+    }
+
+    #[test]
+    fn edge_to_normalized_nearest_exact_match() {
+        let mapping = CharMapping::new(vec![(0, 10), (1, 11), (2, 12)], 3).unwrap();
+        assert_eq!(mapping.to_normalized_nearest(1).unwrap(), 11);
+    }
+
+    #[test]
+    fn edge_compose_two_identities() {
+        let id1 = CharMapping::identity(5).unwrap();
+        let id2 = CharMapping::identity(5).unwrap();
+        let composed = id1.compose(&id2).unwrap();
+        assert_eq!(composed.len(), 5);
+        for i in 0..5u32 {
+            assert_eq!(composed.to_normalized(i).unwrap(), i);
+            assert_eq!(composed.to_original(i).unwrap(), i);
+        }
+    }
+
+    #[test]
+    fn edge_compose_single_entry_mappings() {
+        let m1 = CharMapping::new(vec![(0, 5)], 1).unwrap();
+        let m2 = CharMapping::new(vec![(5, 10)], 6).unwrap();
+        let composed = m1.compose(&m2).unwrap();
+        assert_eq!(composed.len(), 1);
+        assert_eq!(composed.to_normalized(0).unwrap(), 10);
+    }
+
+    #[test]
+    fn edge_original_len_identity() {
+        let mapping = CharMapping::identity(42).unwrap();
+        assert_eq!(mapping.original_len(), 42);
+    }
+
+    #[test]
+    fn edge_original_len_new() {
+        let mapping = CharMapping::new(vec![(0, 0), (1, 2)], 100).unwrap();
+        assert_eq!(mapping.original_len(), 100);
+    }
+
+    #[test]
+    fn edge_original_len_compose() {
+        let m1 = CharMapping::new(vec![(0, 0), (1, 1)], 50).unwrap();
+        let m2 = CharMapping::identity(2).unwrap();
+        let composed = m1.compose(&m2).unwrap();
+        assert_eq!(composed.original_len(), 50);
+    }
+
+    #[test]
+    fn edge_large_mapping_lookups() {
+        let pairs: Vec<(u32, u32)> = (0..1000).map(|i| (i, i * 2)).collect();
+        let mapping = CharMapping::new(pairs, 1000).unwrap();
+        assert_eq!(mapping.len(), 1000);
+        assert_eq!(mapping.to_normalized(0).unwrap(), 0);
+        assert_eq!(mapping.to_normalized(500).unwrap(), 1000);
+        assert_eq!(mapping.to_normalized(999).unwrap(), 1998);
+        assert_eq!(mapping.to_original(0).unwrap(), 0);
+        assert_eq!(mapping.to_original(1000).unwrap(), 500);
+        assert_eq!(mapping.to_original(1998).unwrap(), 999);
+    }
+
+    #[test]
+    fn edge_new_sorts_by_original() {
+        let mapping = CharMapping::new(vec![(3, 30), (1, 10), (2, 20), (0, 0)], 4).unwrap();
+        assert_eq!(mapping.alignments()[0], (0, 0));
+        assert_eq!(mapping.alignments()[1], (1, 10));
+        assert_eq!(mapping.alignments()[2], (2, 20));
+        assert_eq!(mapping.alignments()[3], (3, 30));
+    }
 }
 
 #[cfg(test)]

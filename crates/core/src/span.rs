@@ -315,4 +315,100 @@ mod tests {
     fn span_is_eight_bytes() {
         assert_eq!(core::mem::size_of::<Span>(), 8);
     }
+
+    // ── Edge case tests (02.1-01) ───────────────────────────────────
+
+    #[test]
+    fn edge_zero_length_span_at_start() {
+        let s = Span::new(0, 0);
+        assert!(s.is_empty());
+        assert_eq!(s.len(), 0);
+    }
+
+    #[test]
+    fn edge_span_at_max_offset() {
+        let s = Span::new(u32::MAX - 1, u32::MAX);
+        assert_eq!(s.start(), u32::MAX - 1);
+        assert_eq!(s.end(), u32::MAX);
+        assert_eq!(s.len(), 1);
+    }
+
+    #[test]
+    fn edge_empty_span_at_max() {
+        let s = Span::empty(u32::MAX);
+        assert!(s.is_empty());
+        assert_eq!(s.start(), u32::MAX);
+    }
+
+    #[test]
+    fn edge_contains_at_exact_boundaries() {
+        let outer = Span::new(5, 10);
+        assert!(outer.contains(&Span::new(5, 7)));
+        assert!(outer.contains(&Span::new(8, 10)));
+        assert!(!outer.contains(&Span::new(8, 11)));
+        assert!(!outer.contains(&Span::new(4, 7)));
+    }
+
+    #[test]
+    fn edge_overlaps_adjacent_non_overlapping() {
+        let a = Span::new(0, 5);
+        let b = Span::new(5, 10);
+        assert!(!a.overlaps(&b));
+        assert!(!b.overlaps(&a));
+    }
+
+    #[test]
+    fn edge_overlaps_by_one_byte() {
+        let a = Span::new(0, 10);
+        let b = Span::new(9, 20);
+        assert!(a.overlaps(&b));
+        assert!(b.overlaps(&a));
+    }
+
+    #[test]
+    fn edge_merge_with_empty() {
+        let a = Span::new(5, 10);
+        let empty = Span::empty(7);
+        assert_eq!(a.merge(&empty), Span::new(5, 10));
+    }
+
+    #[test]
+    fn edge_merge_non_overlapping_covers_gap() {
+        let a = Span::new(0, 5);
+        let b = Span::new(10, 15);
+        assert_eq!(a.merge(&b), Span::new(0, 15));
+    }
+
+    #[test]
+    fn edge_split_empty_span() {
+        let s = Span::new(5, 5);
+        let (left, right) = s.split_at(0);
+        assert!(left.is_empty());
+        assert!(right.is_empty());
+    }
+
+    #[test]
+    fn edge_split_single_byte() {
+        let s = Span::new(10, 11);
+        let (left, right) = s.split_at(0);
+        assert!(left.is_empty());
+        assert_eq!(right, Span::new(10, 11));
+        let (left2, right2) = s.split_at(1);
+        assert_eq!(left2, Span::new(10, 11));
+        assert!(right2.is_empty());
+    }
+
+    #[test]
+    fn edge_len_zero_for_empties() {
+        assert_eq!(Span::new(0, 0).len(), 0);
+        assert_eq!(Span::new(100, 100).len(), 0);
+        assert_eq!(Span::empty(42).len(), 0);
+    }
+
+    #[test]
+    fn edge_contains_position_at_max() {
+        let s = Span::new(u32::MAX - 1, u32::MAX);
+        assert!(s.contains_position(u32::MAX - 1));
+        assert!(!s.contains_position(u32::MAX));
+    }
 }

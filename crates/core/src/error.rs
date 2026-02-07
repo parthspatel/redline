@@ -281,4 +281,185 @@ mod tests {
         let _ = ProcessError::Configuration("test".into());
         let _ = ProcessError::LayerNotFound("test".into());
     }
+
+    // ── Edge case tests (02.1-01) ───────────────────────────────────
+
+    #[test]
+    fn edge_all_error_display_strings_non_empty() {
+        let errors: Vec<Box<dyn core::fmt::Display>> = vec![
+            Box::new(StoreError::IdNotFound(0)),
+            Box::new(StoreError::CapacityExceeded("cap".into())),
+            Box::new(StoreError::Frozen),
+            Box::new(TokenizeError::InvalidOffset {
+                offset: 0,
+                length: 0,
+            }),
+            Box::new(TokenizeError::EmptyResult),
+            Box::new(TokenizeError::SpanOutOfBounds {
+                start: 0,
+                end: 0,
+                length: 0,
+            }),
+            Box::new(TokenizeError::EmptyInput),
+            Box::new(TokenizeError::Failed("reason".into())),
+            Box::new(NormalizeError::CompositionFailed),
+            Box::new(NormalizeError::InvalidPosition(0)),
+            Box::new(NormalizeError::EmptyInput),
+            Box::new(NormalizeError::InvalidMapping),
+            Box::new(ConfigError::UnknownFeature("x".into())),
+            Box::new(ConfigError::Invalid("y".into())),
+            Box::new(ProcessError::Configuration("c".into())),
+            Box::new(ProcessError::LayerNotFound("l".into())),
+        ];
+        for err in &errors {
+            let msg = err.to_string();
+            assert!(!msg.is_empty(), "Display string should not be empty");
+        }
+    }
+
+    #[test]
+    fn edge_store_error_display_formats() {
+        assert_eq!(
+            StoreError::IdNotFound(42).to_string(),
+            "string id 42 not found in text store"
+        );
+        assert_eq!(
+            StoreError::CapacityExceeded("full".into()).to_string(),
+            "text store capacity exceeded: full"
+        );
+        assert_eq!(
+            StoreError::Frozen.to_string(),
+            "text store is frozen; use TextStoreBuilder for mutations"
+        );
+    }
+
+    #[test]
+    fn edge_tokenize_error_display_formats() {
+        assert_eq!(
+            TokenizeError::InvalidOffset {
+                offset: 10,
+                length: 5
+            }
+            .to_string(),
+            "invalid offset 10 for text of length 5"
+        );
+        assert_eq!(
+            TokenizeError::EmptyResult.to_string(),
+            "tokenizer produced empty result"
+        );
+        assert_eq!(
+            TokenizeError::SpanOutOfBounds {
+                start: 5,
+                end: 20,
+                length: 10
+            }
+            .to_string(),
+            "span 5..20 out of bounds for text of length 10"
+        );
+        assert_eq!(
+            TokenizeError::EmptyInput.to_string(),
+            "tokenizer received empty input"
+        );
+        assert_eq!(
+            TokenizeError::Failed("oops".into()).to_string(),
+            "tokenization failed: oops"
+        );
+    }
+
+    #[test]
+    fn edge_normalize_error_display_formats() {
+        assert_eq!(
+            NormalizeError::CompositionFailed.to_string(),
+            "character mapping composition failed"
+        );
+        assert_eq!(
+            NormalizeError::InvalidPosition(99).to_string(),
+            "invalid position 99 in normalized text"
+        );
+        assert_eq!(
+            NormalizeError::EmptyInput.to_string(),
+            "normalizer received empty input"
+        );
+        assert_eq!(
+            NormalizeError::InvalidMapping.to_string(),
+            "normalizer produced invalid character mapping"
+        );
+    }
+
+    #[test]
+    fn edge_normalize_error_invalid_position_stores_value() {
+        let err = NormalizeError::InvalidPosition(42);
+        match err {
+            NormalizeError::InvalidPosition(pos) => assert_eq!(pos, 42),
+            _ => panic!("Expected InvalidPosition variant"),
+        }
+    }
+
+    #[test]
+    fn edge_normalize_error_invalid_position_various_values() {
+        for val in [0u32, 1, 100, u32::MAX] {
+            let err = NormalizeError::InvalidPosition(val);
+            match err {
+                NormalizeError::InvalidPosition(pos) => assert_eq!(pos, val),
+                _ => panic!("Expected InvalidPosition variant"),
+            }
+        }
+    }
+
+    #[test]
+    fn edge_config_error_display_formats() {
+        assert_eq!(
+            ConfigError::UnknownFeature("foo".into()).to_string(),
+            "unknown feature: foo"
+        );
+        assert_eq!(
+            ConfigError::Invalid("bar".into()).to_string(),
+            "invalid configuration: bar"
+        );
+    }
+
+    #[test]
+    fn edge_process_error_display_formats() {
+        assert_eq!(
+            ProcessError::Configuration("bad".into()).to_string(),
+            "pipeline configuration error: bad"
+        );
+        assert_eq!(
+            ProcessError::LayerNotFound("missing".into()).to_string(),
+            "layer 'missing' not found in pipeline"
+        );
+    }
+
+    #[test]
+    fn edge_redline_error_display_transparent() {
+        let inner = StoreError::IdNotFound(7);
+        let inner_msg = inner.to_string();
+        let outer: RedlineError = inner.into();
+        assert_eq!(outer.to_string(), inner_msg);
+    }
+
+    #[test]
+    fn edge_all_redline_error_from_conversions() {
+        let _: RedlineError = StoreError::Frozen.into();
+        let _: RedlineError = TokenizeError::EmptyResult.into();
+        let _: RedlineError = NormalizeError::EmptyInput.into();
+        let _: RedlineError = ConfigError::Invalid("x".into()).into();
+        let _: RedlineError = ProcessError::Configuration("x".into()).into();
+    }
+
+    #[test]
+    fn edge_debug_output_non_empty() {
+        let errors: Vec<Box<dyn core::fmt::Debug>> = vec![
+            Box::new(StoreError::IdNotFound(0)),
+            Box::new(TokenizeError::EmptyResult),
+            Box::new(NormalizeError::CompositionFailed),
+            Box::new(ConfigError::Invalid("x".into())),
+            Box::new(ProcessError::Configuration("x".into())),
+            Box::new(RedlineError::from(StoreError::Frozen)),
+        ];
+        for err in &errors {
+            let msg = format!("{:?}", err);
+            assert!(!msg.is_empty(), "Debug output should not be empty");
+        }
+    }
 }

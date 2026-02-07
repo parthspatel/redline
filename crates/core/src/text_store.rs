@@ -340,4 +340,75 @@ mod tests {
 
         assert_eq!(store.len(), 10_000);
     }
+
+    // ── Edge case tests (02.1-01) ───────────────────────────────────
+
+    #[test]
+    fn edge_intern_empty_string() {
+        let mut builder = TextStoreBuilder::new();
+        let id1 = builder.intern("");
+        let id2 = builder.intern("");
+        assert_eq!(id1, id2);
+        assert_eq!(builder.len(), 1);
+    }
+
+    #[test]
+    fn edge_intern_single_multibyte_emoji() {
+        let mut builder = TextStoreBuilder::new();
+        let id = builder.intern("\u{1F600}");
+        assert_eq!(builder.resolve(id).unwrap(), "\u{1F600}");
+        let store = builder.build();
+        assert_eq!(store.resolve(id).unwrap(), "\u{1F600}");
+    }
+
+    #[test]
+    fn edge_intern_very_long_string() {
+        let mut builder = TextStoreBuilder::new();
+        let long = "x".repeat(10_240);
+        let id = builder.intern(&long);
+        let store = builder.build();
+        assert_eq!(store.resolve(id).unwrap(), long);
+    }
+
+    #[test]
+    fn edge_resolve_invalid_id_after_promotion() {
+        let mut builder = TextStoreBuilder::new();
+        builder.intern("only");
+        let store = builder.build();
+        assert!(store.resolve(StringId(1)).is_err());
+        assert!(store.resolve(StringId(u32::MAX)).is_err());
+    }
+
+    #[test]
+    fn edge_resolve_all_after_promotion() {
+        let mut builder = TextStoreBuilder::new();
+        let ids: Vec<StringId> = (0..100)
+            .map(|i| builder.intern(&format!("s_{i}")))
+            .collect();
+        let store = builder.build();
+        for (i, id) in ids.iter().enumerate() {
+            assert_eq!(store.resolve(*id).unwrap(), format!("s_{i}"));
+        }
+    }
+
+    #[test]
+    fn edge_builder_len_tracking() {
+        let mut builder = TextStoreBuilder::new();
+        assert_eq!(builder.len(), 0);
+        assert!(builder.is_empty());
+        builder.intern("a");
+        assert_eq!(builder.len(), 1);
+        builder.intern("b");
+        assert_eq!(builder.len(), 2);
+        builder.intern("a"); // duplicate
+        assert_eq!(builder.len(), 2);
+    }
+
+    #[test]
+    fn edge_empty_store_after_promotion() {
+        let builder = TextStoreBuilder::new();
+        let store = builder.build();
+        assert!(store.is_empty());
+        assert_eq!(store.len(), 0);
+    }
 }

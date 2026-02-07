@@ -165,4 +165,64 @@ mod tests {
         assert_eq!(b, c);
         assert_eq!(a, b); // a is still usable
     }
+
+    // ── Edge case tests (02.1-01) ───────────────────────────────────
+
+    #[test]
+    fn edge_token_with_string_id_zero() {
+        let tok = Token::new(StringId(0), Span::new(0, 5), TokenKind::Regular);
+        assert_eq!(tok.text_id, StringId(0));
+    }
+
+    #[test]
+    fn edge_token_with_string_id_max() {
+        let tok = Token::new(StringId(u32::MAX), Span::new(0, 5), TokenKind::Regular);
+        assert_eq!(tok.text_id, StringId(u32::MAX));
+    }
+
+    #[test]
+    fn edge_all_token_kind_predicates() {
+        let regular = Token::new(StringId(0), Span::new(0, 1), TokenKind::Regular);
+        assert!(!regular.is_special());
+        assert!(!regular.is_continuation());
+        assert!(!regular.is_unknown());
+
+        let special = Token::new(StringId(0), Span::new(0, 1), TokenKind::Special);
+        assert!(special.is_special());
+        assert!(!special.is_continuation());
+
+        let cont = Token::new(StringId(0), Span::new(0, 1), TokenKind::Continuation);
+        assert!(cont.is_continuation());
+        assert!(!cont.is_special());
+
+        let unknown = Token::new(StringId(0), Span::new(0, 1), TokenKind::Unknown);
+        assert!(unknown.is_unknown());
+        assert!(!unknown.is_special());
+    }
+
+    #[test]
+    fn edge_token_with_zero_length_span() {
+        let tok = Token::new(StringId(1), Span::new(5, 5), TokenKind::Regular);
+        assert!(tok.span.is_empty());
+        assert_eq!(tok.span.len(), 0);
+    }
+
+    #[test]
+    fn edge_token_same_content_different_span() {
+        let a = Token::new(StringId(1), Span::new(0, 5), TokenKind::Regular);
+        let b = Token::new(StringId(1), Span::new(10, 15), TokenKind::Regular);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn edge_token_same_span_different_string_id() {
+        let a = Token::new(StringId(1), Span::new(0, 5), TokenKind::Regular);
+        let b = Token::new(StringId(2), Span::new(0, 5), TokenKind::Regular);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn edge_token_size() {
+        assert!(core::mem::size_of::<Token>() <= 24);
+    }
 }
