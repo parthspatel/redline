@@ -148,6 +148,64 @@ mod tests {
         assert_eq!(n.name(), "punctuation");
         assert!((n.cost() - 0.1).abs() < f32::EPSILON);
     }
+
+    // ── Edge case tests (02.1-02) ────────────────────────────────────
+
+    #[test]
+    fn edge_unicode_punctuation_preserved() {
+        let r = normalize("\u{00AB}hello\u{00BB}");
+        assert_eq!(r.text, "\u{00AB}hello\u{00BB}");
+    }
+
+    #[test]
+    fn edge_only_ascii_punctuation_error() {
+        let err = RemovePunctuation.normalize("!@#$").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_mixed_text_and_punctuation() {
+        let r = normalize("hello, world!");
+        assert_eq!(r.text, "hello world");
+    }
+
+    #[test]
+    fn edge_single_punctuation_char() {
+        let err = RemovePunctuation.normalize(".").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_single_non_punctuation_char() {
+        let r = normalize("a");
+        assert_eq!(r.text, "a");
+        assert_eq!(r.mapping.original_len(), 1);
+        assert_eq!(r.mapping.len(), 1);
+    }
+
+    #[test]
+    fn edge_unicode_and_ascii_punct_mixed() {
+        let r = normalize("hello!world\u{2014}test");
+        assert_eq!(r.text, "helloworld\u{2014}test");
+    }
+
+    #[test]
+    fn edge_mapping_with_multiple_removals() {
+        let r = normalize("a!b@c");
+        assert_eq!(r.text, "abc");
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(1).unwrap(), 2);
+        assert_eq!(r.mapping.to_original(2).unwrap(), 4);
+        assert_eq!(r.mapping.original_len(), 5);
+    }
+
+    #[test]
+    fn edge_multibyte_chars_with_ascii_punct() {
+        let r = normalize("\u{00E9}.a");
+        assert_eq!(r.text, "\u{00E9}a");
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(2).unwrap(), 3);
+    }
 }
 
 #[cfg(test)]

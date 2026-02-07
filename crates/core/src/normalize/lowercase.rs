@@ -115,6 +115,85 @@ mod tests {
         assert_eq!(n.name(), "lowercase");
         assert!((n.cost() - 0.1).abs() < f32::EPSILON);
     }
+
+    // ── Edge case tests (02.1-02) ────────────────────────────────────
+
+    #[test]
+    fn edge_single_char() {
+        let r = normalize("A");
+        assert_eq!(r.text, "a");
+        assert_eq!(r.mapping.original_len(), 1);
+        assert_eq!(r.mapping.to_normalized(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_byte_length_change_latin_a_stroke() {
+        // Ⱥ (U+023A) is 2 bytes UTF-8, ⱥ (U+2C65) is 3 bytes UTF-8
+        let input = "\u{023A}";
+        assert_eq!(input.len(), 2);
+        let r = normalize(input);
+        assert_eq!(r.text, "\u{2C65}");
+        assert_eq!(r.text.len(), 3);
+        assert_eq!(r.mapping.original_len(), 2);
+        assert_eq!(r.mapping.to_normalized(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_byte_length_change_turkish_i() {
+        // İ (U+0130) is 2 bytes UTF-8, lowercases to i + combining dot above (3 bytes)
+        let input = "\u{0130}";
+        assert_eq!(input.len(), 2);
+        let r = normalize(input);
+        assert_eq!(r.text.len(), 3);
+        assert_eq!(r.mapping.original_len(), 2);
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(1).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_noop_mapping_identity() {
+        let r = normalize("hello");
+        assert_eq!(r.text, "hello");
+        assert_eq!(r.mapping.original_len(), 5);
+        assert_eq!(r.mapping.len(), 5);
+        for i in 0..5u32 {
+            assert_eq!(r.mapping.to_normalized(i).unwrap(), i);
+            assert_eq!(r.mapping.to_original(i).unwrap(), i);
+        }
+    }
+
+    #[test]
+    fn edge_single_unicode_omega() {
+        let r = normalize("\u{03A9}");
+        assert_eq!(r.text, "\u{03C9}");
+        assert_eq!(r.text.len(), 2);
+        assert_eq!(r.mapping.original_len(), 2);
+        assert_eq!(r.mapping.to_normalized(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_cyrillic_mixed_script() {
+        let r = normalize("\u{041F}\u{0420}\u{0418}\u{0412}\u{0415}\u{0422}");
+        assert_eq!(r.text, "\u{043F}\u{0440}\u{0438}\u{0432}\u{0435}\u{0442}");
+        for (norm_byte, _) in r.text.char_indices() {
+            let orig = r.mapping.to_original(norm_byte as u32).unwrap();
+            let back = r.mapping.to_normalized(orig).unwrap();
+            assert_eq!(back, norm_byte as u32);
+        }
+    }
+
+    #[test]
+    fn edge_mapping_round_trip_with_byte_expansion() {
+        let r = normalize("A\u{03A9}\u{2C60}");
+        assert_eq!(r.text, "a\u{03C9}\u{2C61}");
+        for (norm_byte, _) in r.text.char_indices() {
+            let orig = r.mapping.to_original(norm_byte as u32).unwrap();
+            let back = r.mapping.to_normalized(orig).unwrap();
+            assert_eq!(back, norm_byte as u32);
+        }
+    }
 }
 
 #[cfg(test)]

@@ -158,6 +158,73 @@ mod tests {
         assert_eq!(n.name(), "whitespace");
         assert!((n.cost() - 0.1).abs() < f32::EPSILON);
     }
+
+    // ── Edge case tests (02.1-02) ────────────────────────────────────
+
+    #[test]
+    fn edge_single_space_only() {
+        let err = WhitespaceNormalizer.normalize(" ").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_tabs_and_newlines_only() {
+        let err = WhitespaceNormalizer.normalize("\t\n\t\n").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_em_space_unicode() {
+        let r = normalize("hello\u{2003}world");
+        assert_eq!(r.text, "hello world");
+    }
+
+    #[test]
+    fn edge_mixed_tab_newline_space() {
+        let r = normalize("hello\t\nworld");
+        assert_eq!(r.text, "hello world");
+    }
+
+    #[test]
+    fn edge_quintuple_space_collapse_with_mapping() {
+        let r = normalize("a     b");
+        assert_eq!(r.text, "a b");
+        assert_eq!(r.mapping.to_normalized(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_normalized(1).unwrap(), 1);
+        assert_eq!(r.mapping.to_normalized(6).unwrap(), 2);
+        assert_eq!(r.mapping.original_len(), 7);
+    }
+
+    #[test]
+    fn edge_leading_trailing_preserved_inner() {
+        let r = normalize("  hello world  ");
+        assert_eq!(r.text, "hello world");
+    }
+
+    #[test]
+    fn edge_single_char_no_whitespace() {
+        let r = normalize("x");
+        assert_eq!(r.text, "x");
+        assert_eq!(r.mapping.original_len(), 1);
+        assert_eq!(r.mapping.to_normalized(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_unicode_whitespace_multiple_types() {
+        let r = normalize("a\u{00A0}\u{3000}\u{2009}b");
+        assert_eq!(r.text, "a b");
+    }
+
+    #[test]
+    fn edge_mapping_round_trip_collapsed() {
+        let r = normalize("hello   world");
+        assert_eq!(r.text, "hello world");
+        for (norm_byte, _) in r.text.char_indices() {
+            let orig = r.mapping.to_original(norm_byte as u32).unwrap();
+            let back = r.mapping.to_normalized(orig).unwrap();
+            assert_eq!(back, norm_byte as u32);
+        }
+    }
 }
 
 #[cfg(test)]

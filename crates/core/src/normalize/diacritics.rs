@@ -142,6 +142,68 @@ mod tests {
         assert_eq!(n.name(), "diacritics");
         assert!((n.cost() - 0.3).abs() < f32::EPSILON);
     }
+
+    // ── Edge case tests (02.1-02) ────────────────────────────────────
+
+    #[test]
+    fn edge_no_diacritics_noop() {
+        let r = normalize("hello");
+        assert_eq!(r.text, "hello");
+        assert_eq!(r.mapping.original_len(), 5);
+        for i in 0..5u32 {
+            assert_eq!(r.mapping.to_normalized(i).unwrap(), i);
+        }
+    }
+
+    #[test]
+    fn edge_single_accented_char() {
+        let r = normalize("\u{00E9}");
+        assert_eq!(r.text, "e");
+        assert_eq!(r.mapping.original_len(), 2);
+        assert_eq!(r.mapping.to_normalized(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn edge_vietnamese_stacked_diacritics() {
+        let r = normalize("Vi\u{1EC7}t");
+        assert_eq!(r.text, "Viet");
+    }
+
+    #[test]
+    fn edge_mixed_accented_and_plain() {
+        let r = normalize("caf\u{00E9} r\u{00E9}sum\u{00E9}");
+        assert_eq!(r.text, "cafe resume");
+    }
+
+    #[test]
+    fn edge_all_combining_marks_empty_input() {
+        let err = RemoveDiacritics
+            .normalize("\u{0301}\u{0302}\u{0303}")
+            .unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_single_char_no_diacritics() {
+        let r = normalize("a");
+        assert_eq!(r.text, "a");
+        assert_eq!(r.mapping.original_len(), 1);
+        assert_eq!(r.mapping.len(), 1);
+    }
+
+    #[test]
+    fn edge_mapping_correctness_mixed() {
+        let r = normalize("\u{00E0}b");
+        assert_eq!(r.text, "ab");
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(1).unwrap(), 2);
+    }
+
+    #[test]
+    fn edge_multiple_diacritics_on_one_char() {
+        let r = normalize("\u{1ED3}");
+        assert_eq!(r.text, "o");
+    }
 }
 
 #[cfg(test)]

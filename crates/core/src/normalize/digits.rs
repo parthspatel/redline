@@ -136,6 +136,67 @@ mod tests {
         assert_eq!(n.name(), "digits");
         assert!((n.cost() - 0.1).abs() < f32::EPSILON);
     }
+
+    // ── Edge case tests (02.1-02) ────────────────────────────────────
+
+    #[test]
+    fn edge_unicode_digits_preserved() {
+        let r = normalize("hello\u{2460}\u{2461}\u{2462}");
+        assert_eq!(r.text, "hello\u{2460}\u{2461}\u{2462}");
+    }
+
+    #[test]
+    fn edge_only_ascii_digits_error() {
+        let err = RemoveDigits.normalize("12345").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_mixed_digits_and_text() {
+        let r = normalize("abc123def");
+        assert_eq!(r.text, "abcdef");
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(1).unwrap(), 1);
+        assert_eq!(r.mapping.to_original(2).unwrap(), 2);
+        assert_eq!(r.mapping.to_original(3).unwrap(), 6);
+        assert_eq!(r.mapping.to_original(4).unwrap(), 7);
+        assert_eq!(r.mapping.to_original(5).unwrap(), 8);
+    }
+
+    #[test]
+    fn edge_single_digit_error() {
+        let err = RemoveDigits.normalize("5").unwrap_err();
+        assert!(matches!(err, NormalizeError::EmptyInput));
+    }
+
+    #[test]
+    fn edge_single_non_digit_char() {
+        let r = normalize("a");
+        assert_eq!(r.text, "a");
+        assert_eq!(r.mapping.original_len(), 1);
+        assert_eq!(r.mapping.len(), 1);
+    }
+
+    #[test]
+    fn edge_fullwidth_digits_preserved() {
+        let r = normalize("a\u{FF10}\u{FF11}b");
+        assert_eq!(r.text, "a\u{FF10}\u{FF11}b");
+    }
+
+    #[test]
+    fn edge_mapping_with_multibyte_chars() {
+        let r = normalize("\u{00E9}1a");
+        assert_eq!(r.text, "\u{00E9}a");
+        assert_eq!(r.mapping.to_original(0).unwrap(), 0);
+        assert_eq!(r.mapping.to_original(2).unwrap(), 3);
+        assert_eq!(r.mapping.original_len(), 4);
+    }
+
+    #[test]
+    fn edge_arabic_digits_preserved() {
+        let r = normalize("a\u{0660}\u{0661}\u{0662}b");
+        assert_eq!(r.text, "a\u{0660}\u{0661}\u{0662}b");
+    }
 }
 
 #[cfg(test)]

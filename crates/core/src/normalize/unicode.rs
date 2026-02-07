@@ -242,6 +242,96 @@ mod tests {
             "unicode-nfkd"
         );
     }
+
+    // ── Edge case tests (02.1-02) ────────────────────────────────────
+
+    #[test]
+    fn edge_single_precomposed_nfc_noop() {
+        let r = nfc("\u{00E9}");
+        assert_eq!(r.text, "\u{00E9}");
+        assert_eq!(r.mapping.original_len(), 2);
+    }
+
+    #[test]
+    fn edge_decomposed_to_nfc() {
+        let input = "e\u{0301}";
+        assert_eq!(input.len(), 3);
+        let r = nfc(input);
+        assert_eq!(r.text, "\u{00E9}");
+        assert_eq!(r.text.len(), 2);
+    }
+
+    #[test]
+    fn edge_nfd_precomposed_to_decomposed() {
+        let r = nfd("\u{00E9}");
+        assert_eq!(r.text, "e\u{0301}");
+        assert_eq!(r.text.len(), 3);
+    }
+
+    #[test]
+    fn edge_nfkc_fi_ligature_expands() {
+        let input = "\u{FB01}";
+        assert_eq!(input.len(), 3);
+        let r = nfkc(input);
+        assert_eq!(r.text, "fi");
+        assert_eq!(r.text.len(), 2);
+    }
+
+    #[test]
+    fn edge_nfkd_fi_ligature_expands() {
+        let r = UnicodeNormalizer::new(NormalizationForm::NFKD)
+            .normalize("\u{FB01}")
+            .unwrap();
+        assert_eq!(r.text, "fi");
+    }
+
+    #[test]
+    fn edge_ascii_through_nfc_noop() {
+        let r = nfc("hello world 123");
+        assert_eq!(r.text, "hello world 123");
+        for (byte, _) in r.text.char_indices() {
+            let orig = r.mapping.to_original(byte as u32).unwrap();
+            assert_eq!(orig, byte as u32);
+        }
+    }
+
+    #[test]
+    fn edge_single_char_nfc() {
+        let r = nfc("a");
+        assert_eq!(r.text, "a");
+        assert_eq!(r.mapping.original_len(), 1);
+    }
+
+    #[test]
+    fn edge_nfc_nfd_round_trip() {
+        let input = "caf\u{00E9} na\u{00EF}ve";
+        let nfd_result = nfd(input);
+        let nfc_of_nfd = nfc(&nfd_result.text);
+        let nfc_direct = nfc(input);
+        assert_eq!(nfc_of_nfd.text, nfc_direct.text);
+    }
+
+    #[test]
+    fn edge_all_four_forms_on_same_input() {
+        let input = "caf\u{00E9}";
+        let r_nfc = nfc(input);
+        let r_nfd = nfd(input);
+        let r_nfkc = nfkc(input);
+        let r_nfkd = UnicodeNormalizer::new(NormalizationForm::NFKD)
+            .normalize(input)
+            .unwrap();
+        assert_eq!(r_nfc.text, r_nfkc.text);
+        assert_eq!(r_nfd.text, r_nfkd.text);
+        assert_ne!(r_nfc.text, r_nfd.text);
+    }
+
+    #[test]
+    fn edge_hangul_decomposition() {
+        let input = "\u{D55C}";
+        let r = nfd(input);
+        assert!(r.text.len() >= input.len());
+        assert!(r.text.chars().count() > 1);
+    }
 }
 
 #[cfg(test)]
