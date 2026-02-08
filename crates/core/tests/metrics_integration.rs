@@ -1,20 +1,17 @@
 //! Comprehensive integration tests for the full metrics engine.
 
+mod common;
+
 use hashbrown::HashMap;
 use redline_core::metrics::DependencyKind;
 use redline_core::metrics::error::MetricError;
 use redline_core::process::ProcessedText;
-use redline_core::tokenize::WordTokenizer;
 use redline_core::{
-    ExecutionMode, Metric, MetricInput, MetricRegistry, MetricValue, MetricsEngine, TextProcessor,
-    register_builtins,
+    Metric, MetricInput, MetricRegistry, MetricValue, MetricsEngine, register_builtins,
 };
 
 fn process(s: &str) -> ProcessedText {
-    TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All)
-        .unwrap()
-        .process(s)
-        .unwrap()
+    common::process(s)
 }
 
 const SINGLE_METRIC_IDS: &[&str] = &[
@@ -372,6 +369,163 @@ fn missing_dependency_validation_error() {
     let mut reg = MetricRegistry::new();
     reg.register(Box::new(BadMetric)).unwrap();
     assert!(reg.validate().is_err());
+}
+
+// ── Readability Ordering (Phase 4.1 realistic fixtures) ─────────────
+
+#[test]
+fn flesch_reading_ease_ordering() {
+    let mut reg = MetricRegistry::new();
+    register_builtins(&mut reg).unwrap();
+    let engine = MetricsEngine::new(reg);
+
+    let simple = process(common::SIMPLE_PROSE);
+    let literary = process(common::LITERARY_PROSE);
+    let technical = process(common::TECHNICAL_PROSE);
+    let academic = process(common::ACADEMIC_PROSE);
+
+    let fre_simple = engine
+        .get("flesch_reading_ease", &MetricInput::Single(&simple))
+        .as_float()
+        .unwrap();
+    let fre_literary = engine
+        .get("flesch_reading_ease", &MetricInput::Single(&literary))
+        .as_float()
+        .unwrap();
+    let fre_technical = engine
+        .get("flesch_reading_ease", &MetricInput::Single(&technical))
+        .as_float()
+        .unwrap();
+    let fre_academic = engine
+        .get("flesch_reading_ease", &MetricInput::Single(&academic))
+        .as_float()
+        .unwrap();
+
+    // Simple > Literary > Technical > Academic (easier text = higher FRE)
+    assert!(
+        fre_simple > fre_literary,
+        "SIMPLE ({fre_simple}) should be easier than LITERARY ({fre_literary})"
+    );
+    assert!(
+        fre_literary > fre_technical,
+        "LITERARY ({fre_literary}) should be easier than TECHNICAL ({fre_technical})"
+    );
+    assert!(
+        fre_technical > fre_academic,
+        "TECHNICAL ({fre_technical}) should be easier than ACADEMIC ({fre_academic})"
+    );
+}
+
+#[test]
+fn gunning_fog_ordering() {
+    let mut reg = MetricRegistry::new();
+    register_builtins(&mut reg).unwrap();
+    let engine = MetricsEngine::new(reg);
+
+    let simple = process(common::SIMPLE_PROSE);
+    let academic = process(common::ACADEMIC_PROSE);
+
+    let fog_simple = engine
+        .get("gunning_fog", &MetricInput::Single(&simple))
+        .as_float()
+        .unwrap();
+    let fog_academic = engine
+        .get("gunning_fog", &MetricInput::Single(&academic))
+        .as_float()
+        .unwrap();
+
+    // Academic should have higher Fog index (harder to read)
+    assert!(
+        fog_academic > fog_simple,
+        "ACADEMIC fog ({fog_academic}) should be higher than SIMPLE fog ({fog_simple})"
+    );
+}
+
+// ── Pairwise Metrics with Realistic Pairs ───────────────────────────
+
+#[test]
+fn typo_correction_high_similarity_metrics() {
+    use common::diff_pairs::*;
+    let mut reg = MetricRegistry::new();
+    register_builtins(&mut reg).unwrap();
+    let engine = MetricsEngine::new(reg);
+
+    let source = process(TYPO_BEFORE);
+    let target = process(TYPO_AFTER);
+    let input = MetricInput::Pairwise(&source, &target);
+
+    let jaccard = engine.get("jaccard_similarity", &input).as_float().unwrap();
+    assert!(
+        jaccard > 0.7,
+        "Typo correction should have high Jaccard similarity, got {jaccard}"
+    );
+
+    let cosine = engine.get("cosine_similarity", &input).as_float().unwrap();
+    assert!(
+        cosine > 0.7,
+        "Typo correction should have high cosine similarity, got {cosine}"
+    );
+
+    let lev = engine
+        .get("levenshtein_distance", &input)
+        .as_integer()
+        .unwrap();
+    assert!(
+        lev <= 3,
+        "Typo correction should have small Levenshtein distance, got {lev}"
+    );
+}
+
+#[test]
+fn rewrite_low_similarity_metrics() {
+    use common::diff_pairs::*;
+    let mut reg = MetricRegistry::new();
+    register_builtins(&mut reg).unwrap();
+    let engine = MetricsEngine::new(reg);
+
+    let source = process(REWRITE_BEFORE);
+    let target = process(REWRITE_AFTER);
+    let input = MetricInput::Pairwise(&source, &target);
+
+    let jaccard = engine.get("jaccard_similarity", &input).as_float().unwrap();
+    assert!(
+        jaccard < 0.5,
+        "Rewrite should have low Jaccard similarity, got {jaccard}"
+    );
+}
+
+#[test]
+fn readability_delta_between_prose_levels() {
+    let mut reg = MetricRegistry::new();
+    register_builtins(&mut reg).unwrap();
+    let engine = MetricsEngine::new(reg);
+
+    let simple = process(common::SIMPLE_PROSE);
+    let academic = process(common::ACADEMIC_PROSE);
+    let input = MetricInput::Pairwise(&simple, &academic);
+
+    let delta = engine.get("readability_delta", &input).as_float().unwrap();
+    // Should be a large positive delta (simple has higher FRE than academic)
+    assert!(
+        delta.abs() > 20.0,
+        "Readability delta between SIMPLE and ACADEMIC should be large, got {delta}"
+    );
+}
+
+#[test]
+fn multilang_pairwise_no_panic() {
+    let mut reg = MetricRegistry::new();
+    register_builtins(&mut reg).unwrap();
+    let engine = MetricsEngine::new(reg);
+
+    let cjk = process(common::multilang::CJK);
+    let arabic = process(common::multilang::ARABIC_PARAGRAPH);
+    let input = MetricInput::Pairwise(&cjk, &arabic);
+
+    // Just ensure no panics on cross-script pairwise comparison
+    for id in PAIRWISE_METRIC_IDS {
+        let _ = engine.get(id, &input);
+    }
 }
 
 // ── Property Tests ──────────────────────────────────────────────────

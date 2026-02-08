@@ -1,10 +1,10 @@
 //! Integration tests for the metrics engine with count metrics.
 
-use redline_core::TextProcessor;
+mod common;
+
 use redline_core::metrics::counts::*;
 use redline_core::metrics::{MetricInput, MetricRegistry, MetricValue, MetricsEngine};
 use redline_core::process::ProcessedText;
-use redline_core::tokenize::WordTokenizer;
 
 fn register_all_counts(reg: &mut MetricRegistry) {
     reg.register(Box::new(WordCountMetric)).unwrap();
@@ -22,13 +22,7 @@ fn register_all_counts(reg: &mut MetricRegistry) {
 }
 
 fn process_text(text: &str) -> ProcessedText {
-    let processor = TextProcessor::new(
-        vec![],
-        Box::new(WordTokenizer),
-        redline_core::ExecutionMode::All,
-    )
-    .unwrap();
-    processor.process(text).unwrap()
+    common::process(text)
 }
 
 #[test]
@@ -183,4 +177,54 @@ fn engine_unicode_text() {
     // byte_count >= char_count for multi-byte chars
     let byte_val = engine.get("byte_count", &input);
     assert!(byte_val.as_integer().unwrap() >= char_val.as_integer().unwrap());
+}
+
+#[test]
+fn multi_paragraph_counts() {
+    let mut reg = MetricRegistry::new();
+    register_all_counts(&mut reg);
+
+    let engine = MetricsEngine::new(reg);
+    let text = process_text(common::MULTI_PARAGRAPH);
+    let input = MetricInput::Single(&text);
+
+    let para = engine.get("paragraph_count", &input).as_integer().unwrap();
+    assert_eq!(para, 2, "MULTI_PARAGRAPH has 2 paragraphs");
+
+    let words = engine.get("word_count", &input).as_integer().unwrap();
+    assert!(
+        words > 50,
+        "MULTI_PARAGRAPH should have >50 words, got {words}"
+    );
+
+    let sentences = engine.get("sentence_count", &input).as_integer().unwrap();
+    assert!(
+        sentences >= 4,
+        "MULTI_PARAGRAPH should have >=4 sentences, got {sentences}"
+    );
+}
+
+#[test]
+fn technical_prose_counts() {
+    let mut reg = MetricRegistry::new();
+    register_all_counts(&mut reg);
+
+    let engine = MetricsEngine::new(reg);
+    let text = process_text(common::TECHNICAL_PROSE);
+    let input = MetricInput::Single(&text);
+
+    let words = engine.get("word_count", &input).as_integer().unwrap();
+    assert!(
+        words > 20,
+        "TECHNICAL_PROSE should have >20 words, got {words}"
+    );
+
+    let punct = engine
+        .get("punctuation_count", &input)
+        .as_integer()
+        .unwrap();
+    assert!(
+        punct >= 2,
+        "TECHNICAL_PROSE should have >=2 punctuation marks, got {punct}"
+    );
 }
