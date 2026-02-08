@@ -210,6 +210,19 @@ Applied to every phase:
 4. Cache hit: same text hashed twice returns cached metrics without recomputation
 5. Custom metric via MetricRegistry integrates with lazy evaluation and caching
 
+**Plans:** 8 plans in 5 waves
+
+| Plan | Wave | Type | Description | Depends On |
+|------|------|------|-------------|------------|
+| 04-01 | 1 | execute | Foundation: Metric trait, registry, cache, engine | -- |
+| 04-02 | 2 | tdd | Count metrics batch 1 (word, char, byte, sentence, syllable, unique_word) | 04-01 |
+| 04-03 | 2 | tdd | Count metrics batch 2 (paragraph, line, letter, digit, whitespace, punctuation) + engine integration | 04-01 |
+| 04-04 | 3 | tdd | Readability batch 1 (avg_word_length, avg_sentence_length, vocabulary_richness, lexical_density, flesch_reading_ease) | 04-02, 04-03 |
+| 04-05 | 3 | tdd | Readability batch 2 (flesch_kincaid_grade, gunning_fog, smog_index, coleman_liau, ari) + engine integration | 04-02, 04-03 |
+| 04-06 | 4 | tdd | Pairwise set/vector (jaccard, cosine, dice, overlap, length_ratio, word_count_diff, char_count_diff) | 04-01 |
+| 04-07 | 4 | tdd | Pairwise edit distance (levenshtein, damerau_levenshtein, hamming, jaro, jaro_winkler) | 04-01 |
+| 04-08 | 5 | execute | Delta metrics + register_builtins + comprehensive integration tests | 04-04..07 |
+
 ---
 
 ## Phase 5: Analysis Framework
@@ -378,7 +391,7 @@ Applied to every phase:
 | 2 | Text Processing | 8 | ✓ Complete | Phase 1 |
 | 2.1 | Test Coverage & Simulation | 5 | Planned | Phase 2 (INSERTED) |
 | 3 | Diff Computation | 9 | Planned (5 plans) | Phase 1, 2 |
-| 4 | Metrics Engine | 6 | Pending | Phase 1, 2, 3 |
+| 4 | Metrics Engine | 6 | Planned (8 plans) | Phase 1, 2, 3 |
 | 5 | Analysis Framework | 8 | Pending | Phase 3, 4 |
 | 6 | Orchestration & Config | 8 | Pending | Phase 2-5 |
 | 7 | Async Support | 5 | Pending | Phase 6 |
