@@ -3,6 +3,8 @@
 //! Tests semantically meaningful normalizer-tokenizer combos through the
 //! TextProcessor pipeline, verifying correct output and CharMapping integrity.
 
+mod common;
+
 use redline_core::normalize::{
     Lowercase, Normalizer, RemoveDiacritics, RemoveDigits, RemovePunctuation, UnicodeNormalizer,
     WhitespaceNormalizer,
@@ -13,16 +15,11 @@ use redline_core::tokenize::{
     WordTokenizer,
 };
 
-// ── Test input constants ─────────────────────────────────────────────
+// ── Test input constants (from shared fixtures) ─────────────────────
 
-const ASCII: &str = "Hello  WORLD, this is a test! 123 numbers here.";
-const UNICODE: &str = "Caf\u{00E9} r\u{00E9}sum\u{00E9} na\u{00EF}ve";
-const CJK: &str = "\u{4F60}\u{597D}\u{4E16}\u{754C} Hello World";
-const EMOJI: &str = "Hello \u{1F44B} World \u{1F30D}";
-const RTL: &str = "\u{0645}\u{0631}\u{062D}\u{0628}\u{0627} \u{0628}\u{0627}\u{0644}\u{0639}\u{0627}\u{0644}\u{0645}";
-const VIETNAMESE: &str = "Vi\u{1EC7}t Nam \u{0111}\u{1EB9}p l\u{1EAF}m";
-const MIXED: &str =
-    "Hello \u{4E16}\u{754C} \u{0645}\u{0631}\u{062D}\u{0628}\u{0627} \u{1F44B} caf\u{00E9}";
+use common::multilang::{
+    ASCII, CJK, EMOJI, MIXED_SCRIPT as MIXED, RTL, UNICODE_ACCENTED as UNICODE, VIETNAMESE,
+};
 
 // ── Assertion helpers ────────────────────────────────────────────────
 
@@ -208,6 +205,15 @@ mod word_tokenizer_combos {
             Box::new(WordTokenizer),
         );
     }
+
+    #[test]
+    fn realistic_paragraph_lowercase_whitespace_word() {
+        assert_pipeline_valid(
+            common::TECHNICAL_PROSE,
+            vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
+            Box::new(WordTokenizer),
+        );
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -238,6 +244,11 @@ mod sentence_tokenizer_combos {
     #[test]
     fn remove_punctuation_sentence() {
         assert_sentence_pipeline_valid(ASCII, vec![Box::new(RemovePunctuation)]);
+    }
+
+    #[test]
+    fn realistic_paragraph_sentence() {
+        assert_sentence_pipeline_valid(common::LITERARY_PROSE, vec![Box::new(Lowercase)]);
     }
 }
 
@@ -371,6 +382,24 @@ mod unicode_combos {
             MIXED,
             vec![Box::new(UnicodeNormalizer::default()), Box::new(Lowercase)],
             Box::new(CharTokenizer),
+        );
+    }
+
+    #[test]
+    fn chinese_paragraph_word() {
+        assert_pipeline_valid(
+            common::multilang::CHINESE_PARAGRAPH,
+            vec![Box::new(Lowercase)],
+            Box::new(WordTokenizer),
+        );
+    }
+
+    #[test]
+    fn french_accented_remove_diacritics_word() {
+        assert_pipeline_valid(
+            common::multilang::ACCENTED_FRENCH,
+            vec![Box::new(RemoveDiacritics), Box::new(Lowercase)],
+            Box::new(WordTokenizer),
         );
     }
 }

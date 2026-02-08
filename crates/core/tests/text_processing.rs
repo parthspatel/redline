@@ -2,6 +2,8 @@
 //!
 //! Tests all 5 ROADMAP success criteria for the text processing pipeline.
 
+mod common;
+
 use redline_core::char_mapping::CharMapping;
 use redline_core::normalize::diacritics::RemoveDiacritics;
 use redline_core::normalize::lowercase::Lowercase;
@@ -295,4 +297,140 @@ mod proptests {
             }
         }
     }
+}
+
+// ── Realistic fixture tests (Phase 4.1) ──────────────────────────────
+
+#[test]
+fn realistic_paragraph_through_full_pipeline() {
+    let processor = TextProcessor::new(
+        vec![
+            Box::new(Lowercase),
+            Box::new(WhitespaceNormalizer),
+            Box::new(UnicodeNormalizer::default()),
+        ],
+        Box::new(WordTokenizer),
+        ExecutionMode::All,
+    )
+    .unwrap();
+
+    let result = processor.process(common::TECHNICAL_PROSE).unwrap();
+
+    assert!(
+        result.tokens.len() > 20,
+        "got {} tokens",
+        result.tokens.len()
+    );
+    for token in &result.tokens {
+        assert!(result.text_store.resolve(token.text_id).is_ok());
+    }
+    assert_eq!(result.normalized, result.normalized.to_lowercase());
+
+    let mapping = result.composed_mapping.as_ref().unwrap();
+    assert_eq!(
+        mapping.original_len() as usize,
+        common::TECHNICAL_PROSE.len()
+    );
+    assert_eq!(result.layers.len(), 3);
+}
+
+#[test]
+fn literary_prose_preserves_sentence_structure() {
+    let processor = TextProcessor::new(
+        vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
+        Box::new(WordTokenizer),
+        ExecutionMode::All,
+    )
+    .unwrap();
+
+    let result = processor.process(common::LITERARY_PROSE).unwrap();
+
+    assert!(!result.tokens.is_empty());
+    assert!(
+        !result.normalized.contains("  "),
+        "double spaces should be collapsed"
+    );
+
+    for token in &result.tokens {
+        let end = token.span.end() as usize;
+        assert!(
+            end <= common::LITERARY_PROSE.len(),
+            "span end {} exceeds input len {}",
+            end,
+            common::LITERARY_PROSE.len()
+        );
+    }
+}
+
+#[test]
+fn multi_paragraph_whitespace_normalization() {
+    let processor = TextProcessor::new(
+        vec![Box::new(WhitespaceNormalizer)],
+        Box::new(WordTokenizer),
+        ExecutionMode::All,
+    )
+    .unwrap();
+
+    let result = processor.process(common::MULTI_PARAGRAPH).unwrap();
+    assert!(
+        result.tokens.len() > 40,
+        "multi-paragraph should produce many tokens, got {}",
+        result.tokens.len()
+    );
+}
+
+#[test]
+fn accented_text_full_pipeline() {
+    let processor = TextProcessor::new(
+        vec![
+            Box::new(UnicodeNormalizer::default()),
+            Box::new(RemoveDiacritics),
+            Box::new(Lowercase),
+        ],
+        Box::new(WordTokenizer),
+        ExecutionMode::All,
+    )
+    .unwrap();
+
+    let result = processor
+        .process(common::multilang::ACCENTED_FRENCH)
+        .unwrap();
+
+    // All accents should be stripped
+    for ch in result.normalized.chars() {
+        assert!(
+            ch.is_ascii() || ch == '\u{0153}', // oe ligature is not a diacritic
+            "unexpected non-ASCII char: {:?}",
+            ch
+        );
+    }
+    for token in &result.tokens {
+        assert!(result.text_store.resolve(token.text_id).is_ok());
+    }
+    let mapping = result.composed_mapping.as_ref().unwrap();
+    assert_eq!(
+        mapping.original_len() as usize,
+        common::multilang::ACCENTED_FRENCH.len()
+    );
+}
+
+#[test]
+fn simple_prose_char_tokenizer() {
+    let processor = TextProcessor::new(
+        vec![Box::new(Lowercase)],
+        Box::new(CharTokenizer),
+        ExecutionMode::All,
+    )
+    .unwrap();
+
+    let result = processor.process(common::SIMPLE_PROSE).unwrap();
+
+    // CharTokenizer produces one token per grapheme cluster
+    use unicode_segmentation::UnicodeSegmentation;
+    let expected = result.normalized.graphemes(true).count();
+    assert_eq!(
+        result.tokens.len(),
+        expected,
+        "token count should match grapheme count"
+    );
 }
