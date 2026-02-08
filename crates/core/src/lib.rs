@@ -27,6 +27,7 @@ pub use diff::{
 pub use error::RedlineError;
 pub use metrics::{
     DependencyKind, Metric, MetricCache, MetricInput, MetricRegistry, MetricValue, MetricsEngine,
+    register_builtins,
 };
 pub use normalize::{NormalizationResult, Normalizer};
 pub use process::{ExecutionMode, NormalizationLayer, ProcessedText, TextProcessor};

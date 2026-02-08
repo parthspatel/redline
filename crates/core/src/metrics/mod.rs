@@ -16,6 +16,7 @@ pub mod readability;
 pub mod registry;
 pub mod similarity;
 
+pub use builtins::register_builtins;
 pub use cache::{CacheKey, ContentHash, MetricCache};
 pub use engine::MetricsEngine;
 pub use error::MetricError;
