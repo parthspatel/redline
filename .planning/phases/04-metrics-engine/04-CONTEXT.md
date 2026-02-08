@@ -25,6 +25,7 @@ Quantitative measurements of text properties and pairwise comparisons. Delivers:
 - `dynamic_dependencies(input)` — additional dependencies discovered at compute time, validated on the fly with runtime cycle detection
 - Full dependency set = union of static + dynamic
 - Engine validates static graph upfront (catches cycles and missing IDs early), handles dynamic additions during compute
+- Metric authors must declare their dependency kind as "Static" or "Dynamic" — the registry uses this to route metrics into the appropriate validation path at registration time
 
 ### Metric Organization & TDD Strategy
 - One type per metric: `WordCountMetric`, `FleschKincaidMetric`, `JaccardSimilarityMetric`, etc. — each is its own struct implementing the `Metric` trait
