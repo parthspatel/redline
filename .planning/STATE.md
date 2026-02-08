@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 3 (Diff Computation) -- ✓ Complete
-**Last Action:** Phase 3 verified (33/33 must-haves passed)
+**Current Phase:** Phase 4 (Metrics Engine) -- Planned
+**Last Action:** Phase 4 planned (8 plans in 5 waves, verification passed)
 **Updated:** 2026-02-07
 
 ## Project Reference
@@ -22,7 +22,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 2 - Text Processing | ✓ Complete | 8/8 |
 | 2.1 - Test Coverage & Simulation | ✓ Complete | 5/5 |
 | 3 - Diff Computation | ✓ Complete | 5/5 |
-| 4 - Metrics Engine | Pending | 0/? |
+| 4 - Metrics Engine | ◆ Planned | 8/8 |
 | 5 - Analysis Framework | Pending | 0/? |
 | 6 - Orchestration & Config | Pending | 0/? |
 | 7 - Async Support | Pending | 0/? |
@@ -77,6 +77,16 @@ Progress: ████░░░░░░ 40%
 | Phase 3 Plan 04 | ✓ Executed | `.planning/phases/03-diff-computation/03-04-PLAN.md` |
 | Phase 3 Plan 05 | ✓ Executed | `.planning/phases/03-diff-computation/03-05-PLAN.md` |
 | Phase 3 Verification | ✓ Passed | `.planning/phases/03-diff-computation/03-VERIFICATION.md` |
+| Phase 4 Context | Complete | `.planning/phases/04-metrics-engine/04-CONTEXT.md` |
+| Phase 4 Research | Complete | `.planning/phases/04-metrics-engine/04-RESEARCH.md` |
+| Phase 4 Plan 01 | ○ Planned | `.planning/phases/04-metrics-engine/04-01-PLAN.md` |
+| Phase 4 Plan 02 | ○ Planned | `.planning/phases/04-metrics-engine/04-02-PLAN.md` |
+| Phase 4 Plan 03 | ○ Planned | `.planning/phases/04-metrics-engine/04-03-PLAN.md` |
+| Phase 4 Plan 04 | ○ Planned | `.planning/phases/04-metrics-engine/04-04-PLAN.md` |
+| Phase 4 Plan 05 | ○ Planned | `.planning/phases/04-metrics-engine/04-05-PLAN.md` |
+| Phase 4 Plan 06 | ○ Planned | `.planning/phases/04-metrics-engine/04-06-PLAN.md` |
+| Phase 4 Plan 07 | ○ Planned | `.planning/phases/04-metrics-engine/04-07-PLAN.md` |
+| Phase 4 Plan 08 | ○ Planned | `.planning/phases/04-metrics-engine/04-08-PLAN.md` |
 
 ## Key Decisions Log
 
@@ -115,11 +125,11 @@ Progress: ████░░░░░░ 40%
 
 To continue work on this project:
 
-1. Phase 3 execution complete (5/5 plans), awaiting verification
+1. Phase 4 planned (8 plans across 5 waves), verification passed
 2. 606 tests passing, Criterion benchmarks established
-3. After Phase 3 verification, proceed to Phase 4 (Metrics Engine)
-4. Run `/gsd:plan-phase 4` to plan Phase 4
+3. Run `/gsd:execute-phase 4` to begin Phase 4 execution
+4. Wave order: Foundation → Counts (2 batches) → Readability (2 batches) → Pairwise (2 batches) → Integration
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 3 execution complete (5/5 plans)*
+*Last updated: 2026-02-07 after Phase 4 planning complete (8/8 plans, verified)*
