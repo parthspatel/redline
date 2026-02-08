@@ -9,6 +9,7 @@ extern crate alloc;
 #[cfg(all(feature = "python", feature = "wasm"))]
 compile_error!("Features `python` and `wasm` are mutually exclusive.");
 
+pub mod analysis;
 pub mod char_mapping;
 pub mod diff;
 pub mod error;
