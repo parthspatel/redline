@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use core::ops::ControlFlow;
 
 use super::algorithm::{AlgorithmOutput, DiffAlgorithm};
-use super::common::strip_common_affixes;
+use super::common::{coalesce, strip_common_affixes};
 use super::edit_operation::EditOperation;
 use super::error::DiffError;
 
@@ -323,31 +323,6 @@ fn backtrace(trace: &[Vec<usize>], n: usize, m: usize, offset: i64) -> Vec<EditO
     }
 
     coalesce(ops)
-}
-
-/// Merge consecutive operations of the same kind with contiguous indices.
-///
-/// For example, three adjacent `Insert(3,3..4), Insert(3,4..5), Insert(3,5..6)` become
-/// a single `Insert(3,3..6)`. Similarly for consecutive Deletes, Equals, or Replaces.
-fn coalesce(ops: Vec<EditOperation>) -> Vec<EditOperation> {
-    if ops.is_empty() {
-        return ops;
-    }
-    let mut result: Vec<EditOperation> = Vec::with_capacity(ops.len());
-    result.push(ops[0]);
-    for op in &ops[1..] {
-        let last = result.last_mut().unwrap();
-        if last.kind == op.kind
-            && last.source_end == op.source_start
-            && last.target_end == op.target_start
-        {
-            last.source_end = op.source_end;
-            last.target_end = op.target_end;
-        } else {
-            result.push(*op);
-        }
-    }
-    result
 }
 
 /// Adjust all source and target indices in operations by the given offsets.

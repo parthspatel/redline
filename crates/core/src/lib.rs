@@ -21,7 +21,7 @@ pub mod tokenize;
 
 pub use char_mapping::CharMapping;
 pub use diff::{
-    DiffAlgorithm, DiffComputer, DiffError, DiffResult, EditKind, EditOperation, Myers,
+    DiffAlgorithm, DiffComputer, DiffError, DiffResult, EditKind, EditOperation, Histogram, Myers,
 };
 pub use error::RedlineError;
 pub use normalize::{NormalizationResult, Normalizer};

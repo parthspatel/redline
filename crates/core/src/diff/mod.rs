@@ -5,6 +5,7 @@ pub mod common;
 pub mod computer;
 pub mod edit_operation;
 pub mod error;
+pub mod histogram;
 pub mod myers;
 pub mod result;
 
@@ -13,5 +14,6 @@ pub use common::{apply_operations, build_token_indices, strip_common_affixes};
 pub use computer::DiffComputer;
 pub use edit_operation::{EditKind, EditOperation};
 pub use error::DiffError;
+pub use histogram::Histogram;
 pub use myers::Myers;
 pub use result::{DiffMetadata, DiffResult, DiffStatistics};

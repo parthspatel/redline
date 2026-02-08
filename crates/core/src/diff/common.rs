@@ -98,6 +98,82 @@ pub fn apply_operations(source: &[u32], target: &[u32], ops: &[EditOperation]) -
     result
 }
 
+/// Merge consecutive operations of the same kind with contiguous indices.
+///
+/// For example, three adjacent `Insert(3,3..4), Insert(3,4..5), Insert(3,5..6)` become
+/// a single `Insert(3,3..6)`. Similarly for consecutive Deletes, Equals, or Replaces.
+pub(crate) fn coalesce(ops: Vec<EditOperation>) -> Vec<EditOperation> {
+    if ops.is_empty() {
+        return ops;
+    }
+    let mut result: Vec<EditOperation> = Vec::with_capacity(ops.len());
+    result.push(ops[0]);
+    for op in &ops[1..] {
+        let last = result.last_mut().unwrap();
+        if last.kind == op.kind
+            && last.source_end == op.source_start
+            && last.target_end == op.target_start
+        {
+            last.source_end = op.source_end;
+            last.target_end = op.target_end;
+        } else {
+            result.push(*op);
+        }
+    }
+    result
+}
+
+/// Fuse adjacent Delete immediately followed by Insert (at same position) into Replace.
+///
+/// After sorting and coalescing, a `Delete(s..s+n, t)` followed by `Insert(s+n, t..t+m)`
+/// becomes `Replace(s..s+n, t..t+m)`.
+pub(crate) fn fuse_replaces(ops: Vec<EditOperation>) -> Vec<EditOperation> {
+    if ops.is_empty() {
+        return ops;
+    }
+    let mut result: Vec<EditOperation> = Vec::with_capacity(ops.len());
+    let mut i = 0;
+    while i < ops.len() {
+        if i + 1 < ops.len() {
+            let a = &ops[i];
+            let b = &ops[i + 1];
+            // Delete followed by Insert at the same boundary
+            if a.kind == EditKind::Delete
+                && b.kind == EditKind::Insert
+                && a.source_end == b.source_start
+                && a.target_end == b.target_start
+            {
+                result.push(EditOperation::replace(
+                    a.source_start,
+                    a.source_end,
+                    b.target_start,
+                    b.target_end,
+                ));
+                i += 2;
+                continue;
+            }
+            // Insert followed by Delete at the same boundary
+            if a.kind == EditKind::Insert
+                && b.kind == EditKind::Delete
+                && a.source_end == b.source_start
+                && a.target_end == b.target_start
+            {
+                result.push(EditOperation::replace(
+                    b.source_start,
+                    b.source_end,
+                    a.target_start,
+                    a.target_end,
+                ));
+                i += 2;
+                continue;
+            }
+        }
+        result.push(ops[i]);
+        i += 1;
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -221,5 +297,130 @@ mod tests {
     fn apply_operations_empty() {
         let e: [u32; 0] = [];
         assert!(apply_operations(&e, &e, &[]).is_empty());
+    }
+
+    // ---- coalesce tests ----
+
+    #[test]
+    fn coalesce_empty() {
+        assert!(coalesce(vec![]).is_empty());
+    }
+
+    #[test]
+    fn coalesce_single_op() {
+        let ops = vec![EditOperation::equal(0, 3, 0, 3)];
+        let result = coalesce(ops.clone());
+        assert_eq!(result, ops);
+    }
+
+    #[test]
+    fn coalesce_merges_adjacent_inserts() {
+        let ops = vec![
+            EditOperation::insert(3, 3, 4),
+            EditOperation::insert(3, 4, 5),
+            EditOperation::insert(3, 5, 6),
+        ];
+        let result = coalesce(ops);
+        assert_eq!(result, vec![EditOperation::insert(3, 3, 6)]);
+    }
+
+    #[test]
+    fn coalesce_merges_adjacent_deletes() {
+        let ops = vec![
+            EditOperation::delete(0, 1, 0),
+            EditOperation::delete(1, 2, 0),
+            EditOperation::delete(2, 3, 0),
+        ];
+        let result = coalesce(ops);
+        assert_eq!(result, vec![EditOperation::delete(0, 3, 0)]);
+    }
+
+    #[test]
+    fn coalesce_merges_adjacent_equals() {
+        let ops = vec![
+            EditOperation::equal(0, 2, 0, 2),
+            EditOperation::equal(2, 5, 2, 5),
+        ];
+        let result = coalesce(ops);
+        assert_eq!(result, vec![EditOperation::equal(0, 5, 0, 5)]);
+    }
+
+    #[test]
+    fn coalesce_does_not_merge_different_kinds() {
+        let ops = vec![
+            EditOperation::equal(0, 1, 0, 1),
+            EditOperation::delete(1, 2, 1),
+            EditOperation::equal(2, 3, 1, 2),
+        ];
+        let result = coalesce(ops.clone());
+        assert_eq!(result, ops);
+    }
+
+    #[test]
+    fn coalesce_does_not_merge_non_contiguous() {
+        let ops = vec![
+            EditOperation::equal(0, 2, 0, 2),
+            EditOperation::equal(3, 5, 3, 5), // gap at source index 2
+        ];
+        let result = coalesce(ops.clone());
+        assert_eq!(result, ops);
+    }
+
+    // ---- fuse_replaces tests ----
+
+    #[test]
+    fn fuse_replaces_empty() {
+        assert!(fuse_replaces(vec![]).is_empty());
+    }
+
+    #[test]
+    fn fuse_replaces_delete_then_insert() {
+        let ops = vec![
+            EditOperation::delete(0, 2, 0),
+            EditOperation::insert(2, 0, 3),
+        ];
+        let result = fuse_replaces(ops);
+        assert_eq!(result, vec![EditOperation::replace(0, 2, 0, 3)]);
+    }
+
+    #[test]
+    fn fuse_replaces_insert_then_delete() {
+        let ops = vec![
+            EditOperation::insert(0, 0, 2),
+            EditOperation::delete(0, 3, 2),
+        ];
+        let result = fuse_replaces(ops);
+        assert_eq!(result, vec![EditOperation::replace(0, 3, 0, 2)]);
+    }
+
+    #[test]
+    fn fuse_replaces_leaves_non_adjacent_alone() {
+        let ops = vec![
+            EditOperation::equal(0, 1, 0, 1),
+            EditOperation::delete(1, 2, 1),
+            EditOperation::equal(2, 3, 1, 2),
+            EditOperation::insert(3, 2, 4),
+        ];
+        let result = fuse_replaces(ops.clone());
+        assert_eq!(result, ops); // no adjacent delete+insert pair
+    }
+
+    #[test]
+    fn fuse_replaces_mixed_sequence() {
+        let ops = vec![
+            EditOperation::equal(0, 1, 0, 1),
+            EditOperation::delete(1, 2, 1),
+            EditOperation::insert(2, 1, 2),
+            EditOperation::equal(2, 3, 2, 3),
+        ];
+        let result = fuse_replaces(ops);
+        assert_eq!(
+            result,
+            vec![
+                EditOperation::equal(0, 1, 0, 1),
+                EditOperation::replace(1, 2, 1, 2),
+                EditOperation::equal(2, 3, 2, 3),
+            ]
+        );
     }
 }
