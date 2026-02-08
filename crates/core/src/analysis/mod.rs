@@ -19,6 +19,10 @@ pub mod registry;
 pub mod report;
 
 pub use annotation::{Annotation, RegionSummary};
+pub use builtins::register_builtin_analyzers;
+pub use builtins::{
+    EditClassifierResult, IntentCategory, ReadabilityResult, SemanticResult, StylisticResult,
+};
 pub use context::AnalysisContext;
 pub use coordinator::AnalysisCoordinator;
 pub use error::AnalysisError;
