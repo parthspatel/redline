@@ -295,6 +295,17 @@ Applied to every phase:
 4. Analyzer failure: if ReadabilityAnalyzer panics, remaining analyzers still produce results
 5. EditClassifier categorizes "fix typo" edit as Correction, "add paragraph" as Expansion
 
+**Plans:** 6 plans in 4 waves
+
+| Plan | Wave | Type | Description | Depends On |
+|------|------|------|-------------|------------|
+| 05-01 | 1 | execute | Core framework types: AnalyzerPlugin trait, error, annotation, context, report, module scaffold | -- |
+| 05-02 | 2 | execute | PluginRegistry with cycle detection + ExecutionPlanner with Kahn's toposort | 05-01 |
+| 05-03 | 2 | execute | SemanticAnalyzer (ScoringBackend, Jaccard heuristic) + StylisticAnalyzer (voice, tone, structure) | 05-01 |
+| 05-04 | 2 | execute | ReadabilityAnalyzer (MetricsEngine delta) + EditClassifier (7-category IntentCategory) | 05-01 |
+| 05-05 | 3 | execute | AnalysisCoordinator (catch_unwind, panic isolation) + register_builtin_analyzers | 05-01..04 |
+| 05-06 | 4 | execute | Integration tests verifying all 5 success criteria + final cleanup | 05-01..05 |
+
 ---
 
 ## Phase 6: Orchestration & Configuration
@@ -432,7 +443,7 @@ Applied to every phase:
 | 3 | Diff Computation | 9 | Planned (5 plans) | Phase 1, 2 |
 | 4 | Metrics Engine | 6 | ✓ Complete | Phase 1, 2, 3 |
 | 4.1 | Realistic Test Fixtures | 6 | Planned (4 plans) | Phase 4 (INSERTED) |
-| 5 | Analysis Framework | 8 | Pending | Phase 3, 4 |
+| 5 | Analysis Framework | 8 | ✓ Complete | Phase 3, 4 |
 | 6 | Orchestration & Config | 8 | Pending | Phase 2-5 |
 | 7 | Async Support | 5 | Pending | Phase 6 |
 | 8 | Python Bindings | 7 | Pending | Phase 6 |

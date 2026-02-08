@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 4.1 (Realistic Test Fixtures) -- Complete
-**Last Action:** Phase 4.1 executed (4 plans, 855 tests passing, all success criteria verified)
+**Current Phase:** Phase 6 (Orchestration & Config) -- Pending
+**Last Action:** Phase 5 complete (6/6 plans executed, all 5 success criteria verified, 935 tests)
 **Updated:** 2026-02-07
 
 ## Project Reference
@@ -12,7 +12,7 @@
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 5 -- Analysis Framework (plan next)
+**Current focus:** Phase 6 -- Orchestration & Config (plan next)
 
 ## Progress
 
@@ -24,13 +24,13 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 3 - Diff Computation | ✓ Complete | 5/5 |
 | 4 - Metrics Engine | ✓ Complete | 8/8 |
 | 4.1 - Realistic Test Fixtures | ✓ Complete | 4/4 |
-| 5 - Analysis Framework | Pending | 0/? |
+| 5 - Analysis Framework | ✓ Complete | 6/6 |
 | 6 - Orchestration & Config | Pending | 0/? |
 | 7 - Async Support | Pending | 0/? |
 | 8 - Python Bindings | Pending | 0/? |
 | 9 - WASM Target | Pending | 0/? |
 
-Progress: ██████░░░░ 55%
+Progress: ███████░░░ 65%
 
 ## Artifacts
 
@@ -94,6 +94,15 @@ Progress: ██████░░░░ 55%
 | Phase 4.1 Plan 02 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-02-PLAN.md` |
 | Phase 4.1 Plan 03 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-03-PLAN.md` |
 | Phase 4.1 Plan 04 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-04-PLAN.md` |
+| Phase 5 Context | Complete | `.planning/phases/05-analysis-framework/05-CONTEXT.md` |
+| Phase 5 Research | Complete | `.planning/phases/05-analysis-framework/05-RESEARCH.md` |
+| Phase 5 Plan 01 | ✓ Executed | `.planning/phases/05-analysis-framework/05-01-PLAN.md` |
+| Phase 5 Plan 02 | ✓ Executed | `.planning/phases/05-analysis-framework/05-02-PLAN.md` |
+| Phase 5 Plan 03 | ✓ Executed | `.planning/phases/05-analysis-framework/05-03-PLAN.md` |
+| Phase 5 Plan 04 | ✓ Executed | `.planning/phases/05-analysis-framework/05-04-PLAN.md` |
+| Phase 5 Plan 05 | ✓ Executed | `.planning/phases/05-analysis-framework/05-05-PLAN.md` |
+| Phase 5 Plan 06 | ✓ Executed | `.planning/phases/05-analysis-framework/05-06-PLAN.md` |
+| Phase 5 Summaries | ✓ Complete | `.planning/phases/05-analysis-framework/05-0{1-6}-SUMMARY.md` |
 
 ## Key Decisions Log
 
@@ -124,6 +133,11 @@ Progress: ██████░░░░ 55%
 | Pairwise metrics use token text, not StringId | Phase 4 | StringId is per-TextStore; pairwise compares across different stores |
 | foldhash::fast::FixedState for content hash | Phase 4 | DefaultHashBuilder uses random seeding; need deterministic hashing for cache |
 | Delta metrics self-contained (no engine deps) | Phase 4 | Engine can't auto-apply single-text metrics to each half of pairwise input |
+| AssertUnwindSafe safe for coordinator | Phase 5 | context is &immutable, report mutations happen after catch_unwind |
+| ScoringBackend has exactly 2 methods | Phase 5 | Minimal surface for future BERT integration |
+| IntentCategory has 7 locked variants | Phase 5 | Locked design decision; all 7 always present in output |
+| ReadabilityAnalyzer delegates to MetricsEngine | Phase 5 | No re-implementation of readability formulas |
+| Rust 2024 edition: no ref patterns in closures | Phase 5 | Use `**deg` or `*id` instead of `&deg`/`&id` patterns |
 
 ## Roadmap Evolution
 
@@ -138,10 +152,10 @@ Progress: ██████░░░░ 55%
 
 To continue work on this project:
 
-1. Phase 4.1 complete — 855 tests passing, all success criteria verified
-2. Run `/gsd:plan-phase 5` for Phase 5 (Analysis Framework)
-3. Phase 5 depends on Phase 3 (DiffResult) and Phase 4 (metrics)
+1. Phase 5 complete — all 5 success criteria verified, 935 tests passing
+2. Run `/gsd:plan-phase 6` to plan Phase 6 (Orchestration & Config)
+3. Phase 6 depends on Phases 2-5 (all complete)
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 4.1 execution complete (4 plans, 855 tests, verified)*
+*Last updated: 2026-02-07 after Phase 5 complete (6/6 plans, 935 tests, all criteria verified)*
