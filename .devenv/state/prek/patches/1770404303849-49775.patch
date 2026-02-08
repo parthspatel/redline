@@ -1,0 +1,79 @@
+diff --git a/crates/core/src/text_store.rs b/crates/core/src/text_store.rs
+index 932eeda..3eec1bf 100644
+--- a/crates/core/src/text_store.rs
++++ b/crates/core/src/text_store.rs
+@@ -16,11 +16,72 @@ use crate::error::StoreError;
+ #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+ pub struct StringId(u32);
+ 
++impl StringId {
++    /// Returns the raw `u32` value of this identifier.
++    pub fn as_u32(self) -> u32 {
++        self.0
++    }
++}
++
+ /// Mutable builder for interning strings. Deduplicated.
+-pub struct TextStoreBuilder;
++pub struct TextStoreBuilder {
++    strings: Vec<String>,
++    index: HashMap<String, StringId>,
++}
++
++impl TextStoreBuilder {
++    /// Create a new empty builder.
++    pub fn new() -> Self {
++        todo!()
++    }
++
++    /// Intern a string, returning its [`StringId`].
++    pub fn intern(&mut self, _s: &str) -> StringId {
++        todo!()
++    }
++
++    /// Resolve a [`StringId`] back to its string.
++    pub fn resolve(&self, _id: StringId) -> Result<&str, StoreError> {
++        todo!()
++    }
++
++    /// Returns the number of unique strings interned.
++    pub fn len(&self) -> usize {
++        todo!()
++    }
++
++    /// Returns `true` if no strings have been interned.
++    pub fn is_empty(&self) -> bool {
++        todo!()
++    }
++
++    /// Promote this builder into an immutable, shared [`TextStore`].
++    pub fn build(self) -> Arc<TextStore> {
++        todo!()
++    }
++}
+ 
+ /// Immutable, shared string store. Created via [`TextStoreBuilder::build`].
+-pub struct TextStore;
++pub struct TextStore {
++    strings: Vec<String>,
++}
++
++impl TextStore {
++    /// Resolve a [`StringId`] back to its string.
++    pub fn resolve(&self, _id: StringId) -> Result<&str, StoreError> {
++        todo!()
++    }
++
++    /// Returns the number of unique strings in the store.
++    pub fn len(&self) -> usize {
++        todo!()
++    }
++
++    /// Returns `true` if the store contains no strings.
++    pub fn is_empty(&self) -> bool {
++        todo!()
++    }
++}
+ 
+ #[cfg(test)]
+ mod tests {

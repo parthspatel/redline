@@ -1,0 +1,228 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index f40bbf8..b3f3a79 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -72,6 +72,12 @@ version = "1.0.7"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+ 
++[[package]]
++name = "foldhash"
++version = "0.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
++
+ [[package]]
+ name = "getrandom"
+ version = "0.3.4"
+@@ -91,6 +97,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+ dependencies = [
+  "allocator-api2",
++ "foldhash",
+ ]
+ 
+ [[package]]
+diff --git a/crates/core/Cargo.toml b/crates/core/Cargo.toml
+index bc6c713..0a596ca 100644
+--- a/crates/core/Cargo.toml
++++ b/crates/core/Cargo.toml
+@@ -12,7 +12,7 @@ path = "src/lib.rs"
+ 
+ [dependencies]
+ bumpalo = { version = "3.19", features = ["collections", "allocator-api2"] }
+-hashbrown = { version = "0.16", default-features = false, features = ["allocator-api2"] }
++hashbrown = { version = "0.16", default-features = false, features = ["allocator-api2", "default-hasher"] }
+ thiserror = { version = "2.0", default-features = false }
+ 
+ # Optional dependencies
+diff --git a/crates/core/src/text_store.rs b/crates/core/src/text_store.rs
+index e82b7b3..52e39ef 100644
+--- a/crates/core/src/text_store.rs
++++ b/crates/core/src/text_store.rs
+@@ -2,6 +2,25 @@
+ //!
+ //! Strings are interned as [`StringId`] values during the builder phase,
+ //! then the builder is promoted to an immutable [`TextStore`] wrapped in `Arc`.
++//!
++//! # Example
++//!
++//! ```
++//! use redline_core::text_store::{TextStoreBuilder, TextStore, StringId};
++//! use std::sync::Arc;
++//!
++//! let mut builder = TextStoreBuilder::new();
++//! let id_hello = builder.intern("hello");
++//! let id_world = builder.intern("world");
++//!
++//! // Deduplication: same string → same ID
++//! assert_eq!(builder.intern("hello"), id_hello);
++//!
++//! // Promote to immutable, shared store
++//! let store: Arc<TextStore> = builder.build();
++//! assert_eq!(store.resolve(id_hello).unwrap(), "hello");
++//! assert_eq!(store.resolve(id_world).unwrap(), "world");
++//! ```
+ 
+ #[cfg(not(feature = "std"))]
+ use alloc::{string::String, sync::Arc, vec::Vec};
+@@ -12,77 +31,142 @@ use hashbrown::HashMap;
+ 
+ use crate::error::StoreError;
+ 
++// ── StringId ─────────────────────────────────────────────────────────────────
++
+ /// Opaque identifier for an interned string.
++///
++/// This is a lightweight `Copy` type wrapping a `u32` index.
++/// It is only meaningful within the [`TextStoreBuilder`] or [`TextStore`] that created it.
+ #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+ pub struct StringId(u32);
+ 
+ impl StringId {
+     /// Returns the raw `u32` value of this identifier.
++    #[inline]
+     pub fn as_u32(self) -> u32 {
+         self.0
+     }
+ }
+ 
+-/// Mutable builder for interning strings. Deduplicated.
++// ── TextStoreBuilder ─────────────────────────────────────────────────────────
++
++/// Mutable builder for interning strings with deduplication.
++///
++/// Use [`intern`](Self::intern) to add strings and receive [`StringId`] handles,
++/// then call [`build`](Self::build) to promote into an immutable, shared [`TextStore`].
+ pub struct TextStoreBuilder {
++    /// Owned strings indexed by `StringId`. The index into this vec IS the `StringId`.
+     strings: Vec<String>,
+-    index: HashMap<String, StringId>,
++    /// Deduplication map: string content → existing StringId.
++    dedup: HashMap<String, StringId>,
+ }
+ 
+ impl TextStoreBuilder {
+     /// Create a new empty builder.
++    #[inline]
+     pub fn new() -> Self {
+-        todo!()
++        Self {
++            strings: Vec::new(),
++            dedup: HashMap::new(),
++        }
+     }
+ 
+     /// Intern a string, returning its [`StringId`].
+-    pub fn intern(&mut self, _s: &str) -> StringId {
+-        todo!()
++    ///
++    /// If the string has already been interned, returns the existing ID.
++    /// Otherwise, stores the string and returns a fresh ID.
++    pub fn intern(&mut self, s: &str) -> StringId {
++        if let Some(&id) = self.dedup.get(s) {
++            return id;
++        }
++        let id = StringId(self.strings.len() as u32);
++        self.strings.push(s.to_owned());
++        self.dedup.insert(s.to_owned(), id);
++        id
+     }
+ 
+-    /// Resolve a [`StringId`] back to its string.
+-    pub fn resolve(&self, _id: StringId) -> Result<&str, StoreError> {
+-        todo!()
++    /// Resolve a [`StringId`] back to its string slice.
++    ///
++    /// # Errors
++    ///
++    /// Returns [`StoreError::IdNotFound`] if the ID is not valid for this builder.
++    #[inline]
++    pub fn resolve(&self, id: StringId) -> Result<&str, StoreError> {
++        self.strings
++            .get(id.0 as usize)
++            .map(|s| s.as_str())
++            .ok_or(StoreError::IdNotFound(id.0))
+     }
+ 
+     /// Returns the number of unique strings interned.
++    #[inline]
+     pub fn len(&self) -> usize {
+-        todo!()
++        self.strings.len()
+     }
+ 
+     /// Returns `true` if no strings have been interned.
++    #[inline]
+     pub fn is_empty(&self) -> bool {
+-        todo!()
++        self.strings.is_empty()
+     }
+ 
+     /// Promote this builder into an immutable, shared [`TextStore`].
++    ///
++    /// The builder is consumed. The returned `Arc<TextStore>` can be cheaply cloned
++    /// and shared across threads.
+     pub fn build(self) -> Arc<TextStore> {
+-        todo!()
++        Arc::new(TextStore {
++            strings: self.strings,
++        })
+     }
+ }
+ 
+-/// Immutable, shared string store. Created via [`TextStoreBuilder::build`].
++impl Default for TextStoreBuilder {
++    fn default() -> Self {
++        Self::new()
++    }
++}
++
++// ── TextStore ────────────────────────────────────────────────────────────────
++
++/// Immutable, shared string store.
++///
++/// Created via [`TextStoreBuilder::build`]. All [`StringId`] values obtained
++/// from the builder remain valid for lookups on this store.
+ pub struct TextStore {
++    /// Immutable collection of interned strings.
+     strings: Vec<String>,
+ }
+ 
+ impl TextStore {
+-    /// Resolve a [`StringId`] back to its string.
+-    pub fn resolve(&self, _id: StringId) -> Result<&str, StoreError> {
+-        todo!()
++    /// Resolve a [`StringId`] back to its string slice.
++    ///
++    /// # Errors
++    ///
++    /// Returns [`StoreError::IdNotFound`] if the ID is not valid for this store.
++    #[inline]
++    pub fn resolve(&self, id: StringId) -> Result<&str, StoreError> {
++        self.strings
++            .get(id.0 as usize)
++            .map(|s| s.as_str())
++            .ok_or(StoreError::IdNotFound(id.0))
+     }
+ 
+     /// Returns the number of unique strings in the store.
++    #[inline]
+     pub fn len(&self) -> usize {
+-        todo!()
++        self.strings.len()
+     }
+ 
+     /// Returns `true` if the store contains no strings.
++    #[inline]
+     pub fn is_empty(&self) -> bool {
+-        todo!()
++        self.strings.is_empty()
+     }
+ }
+ 
++// ── Tests ────────────────────────────────────────────────────────────────────
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;

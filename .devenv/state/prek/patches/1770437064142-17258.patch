@@ -1,0 +1,902 @@
+diff --git a/.devenv/gc/shell b/.devenv/gc/shell
+index 10c70e6..cd8b684 120000
+--- a/.devenv/gc/shell
++++ b/.devenv/gc/shell
+@@ -1 +1 @@
+-shell-6-link
+\ No newline at end of file
++shell-7-link
+\ No newline at end of file
+diff --git a/.devenv/gc/shell-6-link b/.devenv/gc/shell-6-link
+deleted file mode 120000
+index 2dcc86b..0000000
+--- a/.devenv/gc/shell-6-link
++++ /dev/null
+@@ -1 +0,0 @@
+-/nix/store/9s95mks06agj4y3xyg2i8qa7x9rr22wr-devenv-shell-env
+\ No newline at end of file
+diff --git a/.devenv/nix-eval-cache.db-shm b/.devenv/nix-eval-cache.db-shm
+index 49bf6d0dd57ff87312fd15a56c5ac18fbd8fd4db..d3585fd46ca030ae4cf354913bc1807a41193a9b 100644
+GIT binary patch
+delta 929
+zcmZo@U}|V!s+V}A%K!q*3=9m63=9Gej0_A$3=9lR8SnHKoqY61d+vrW?^uo4*<3rW
+zUgYtQAyqxdY!C*S`yUB_#26SDxEMeZAP&o9N9Ns|T^KJgF@l+sU6^-l7GY7c=FwnC
+zVVKKsje(odl5w*jiyR}5FoQos2g5;zZwx9Bk;(s@xLBSt2s2I=WSPUG$&ku0kKsB4
+z52F=Cnn#2ofT5G&5W{x{RglODMjkDOG=}*MHyC&stwADkjFT_8bFlniPy_K!F!E?K
+zq%$mFxXHlBXaf?FW1M`>i-YASgF2M=!&{8)3Bxl65s;OAJUR>+3=0`<G4M0mLKU3x
+z<zV^6paJE5^W$TA&L9d>JY(_#e-0J_MmvZUj|4*qLodTIhTjaD5D_6(24e<ChCGHU
+zhUE;K8D21mLA1>a;$RVEw1+6-kz@#E=wmp}@P|PQA|k}bV8Y<Ukk3%fu!3O=!%GHn
+zh_*SQ0xUv|4j@Hhj66~dVGR8YCm8-RXoEyPG4V(<gfmQFILYvjK?f=#!w|tRk>M1>
+ze+FHUh#ceOH?e#yuNWjiyhDtW55#jaGwOjja*UH-CGfGlW{?E&4lz#Nm&C!s$fytE
+z$uUlTk<7>PhCvF%JH$A7Pbvos6Qco$C&xJXSsEY9TLx(m?+_!80z(YLREBd5%#4O0
+z5jjR7ZU##RcZL#%28Oi^I~m?F$biHTG4d!f#4=1{IM2YsXao|GV-(_Huww9FC}n75
+zSjVu7;XQ*aNc<2Zj}k*1!*qrV46KaCAQ3sn$q(}RSUxbwfp~`)d6XIA8D=nCWME@7
+z0g1>lPQF*f#qyCs9>hDw$fLrLz%Y~H5(7J<DM&<)aq^u~4wg?03LxGI#>pGXIaoLt
+z%|JXkMjinMABI+jeGH!&6hR^<7$>i*;$Y!qGzanI7<mL4d>Psp_A`88Py&gZV4S?B
+cmV<?h(E`MiW8@KH@MCCaIKc3gK^Y<f0DVT{XaE2J
+
+delta 689
+zcmZo@U}|V!s+V}A%K!pQ3=9m63=9H~85kIh7#JA(?po<AdG>Xq_S_9$-mx07J9(S5
+z)+~wIN2+>|*&qxu_dgN<i7_xRurYun7$ys{eBNBaIEQI-2dk3x<^`-JjO-c=DGYNN
+zu5F&ks?5kP%;3+^!Eg}Fnf%X*Yw{%41?-v(sSNWNu7d^HMHm7YIvEaap2&KZkzI=+
+zjbT2+4Y17Q3+^17C$XMkWY=a$XIQ{+6C!%f3nZ$<IQfUS*yKs9Q`mJFG8h&z+=9rS
+z@rBBM^W&R5iFMB81^y5Lb_s?MhF*qaU}e0l48{zO40#My49gidPoBs+ck;X-s5(i8
+zP=-E+;}CUh3?>Xt4EYSz3@aG6fYr?j71%t9Rf>^aiXn`lpW(#jiLBq5*rgf58745C
+zgm7dSA{ZtzoC2FL`Asa}=1Hu_7$+Zy=iEG*RgrP>s|2XXz9fj1lV2o5MfRjZMV_TW
+zMA#J=Vi=|}oCBN1%gtcP;LcFO(7>>kVdv(Ftj8JI6&Yd~rZJp{$n!8*F?cYPGBh%*
+zW7q|eS7L}`n9gtkEI;`{KGalYhIob<3>P7y_lmeSPhvgA$gaYWz%Y~H5=8V)Daa{j
+y7$<Ki2Qicw*##JU7+M+jfg@`2x+<usAcHSM8^eBx=$cxns1So6Lp#F(uu%YH8`**Y
+
+diff --git a/.devenv/nix-eval-cache.db-wal b/.devenv/nix-eval-cache.db-wal
+index b3a481779dfcfb3bf46ec27c23d695d7bbb9642b..d9f939cbdfefd71ceba79c7b2be00664c2f148ff 100644
+GIT binary patch
+delta 4365
+zcmaFSWw~HaKtl^-3sVbo3rh=Y3tJ0&3r7oQ3s(zw3r`F07QPJE=?(r|?9=Z*;pOBw
+zSMU8G_}<oc+dn+v{mU=iHcyLzfq{{Mfq_AL?uIY#SdG{jo0I)!=?A$^4iJ!L<ebiP
+zjoF!zbMpp)4g4HS{;v7q_47|Nie^@1&BtUeG`y5m-M#&S0=IwwhZsYV#=>i>g+W|q
+zf$6UuxOq8zI2ZcvkF-hKydi*x$HUYj+0?+?A~DUx(#R+|$tW?!EX~5w$S~Q!z&ORo
+z$jrjf)HKN~B{|K~#K<hs*eKaBF)1<8EYZT!!XU{wIW4ozqCT^2Udr@4-`K3#+vcT!
+zIdb3GI+#JCjJ;g#Y;E&W8aY^}D}HCQnLI1b6D+as2b%|6Iqy%lez55LpKKF2+vcT&
+zFmf<7icEj_jm>EKhd(^*lV>If$U_ZhU|`@v_VPvN6*;*p_JnRfu$#S!fBLKh?mmte
+zYOm~%C<j+=H%R0b5MXD&shcPye|!7;+w4pEr@v|7&f&0lcy{&AqBA$QCp3Zss>ABg
+zjVDf}APvj{)1x17@p63gol>}WdqLdx2@APd`PJLzrAX?tF)(WKvhetMMg(}f2gf`6
+z`?-0#gS@P*$Hu_u%ge$u`N0JR7LdsF2OGE*dE4ft1n96cFp4&U<n|qKRcM=+BCXBF
+zz^Kd1!sFr^=IR#)GA6{))6X>stgm<@w=T!;;NsgR3oS2h50K%o=AZuf0QXgnJNH`8
+zXJzdDxc$IEZUF(F{ad-S+6ymrGcYg+ZVzN)Oy{4TwUuS+^cxSk1vt2WhTJLW`RK9z
+z!$XkTqsz<NEpD$o#lXNIyuDEgq}F~e3+r?TMIQF)^^80-Io7<7%@thq@Zfd@CLRF+
+zo}Z7tM1AGI|AB#lL3H~@Cy<5*Usz(NDe-u4yb9rJ{qWA=(e?l(kW!9{+7;UT!t)sz
+z7{s?fOadwWCCWN=dWI8^0LOD%bIGiK&iA)BIDyobn)f|g)_3Cy0|SHPcEM(l+ItB+
+z8q<4<7;~r3Na7LT2+_Q9t$FUR&D%F5fi(1<I=Ez&_~btf3=GoS9T$T%M1`?VoqnQ;
+zM}Q;cNwqZ3;?-5#A2fl~Mm$uy`*@k-H3kL-+3kggL24H?^N37V_|G!^&L+m%=|2|n
+z2yo2E&0lG>*DZLvz+#?D+zKfb=_zJeM&$*jMP+Hp6%|Ff<{1{2mgyOJX%&@~rn%D#
+zB{_8os@m?qp64PnkJ%pK&684DWf&M3<fk)EWfI@6`-Jf!^Yq>Kd33iQP~^PMJze84
+zj{wI{i)*}TJqPD*cR0-Ri^V<9u+T6gv(P-Ppt#a3DJ97=tum*=tRO2XufRMbv7$h?
+zsI<65HzhSKu{5Vd*HF*GLeD@qFEc%(B&Sl>$iT={*T7WQz;Jux37+#@9J~QN0_i&o
+zwr{iJT*pQ=vmbIZ<*{zxeV=D7Gl!N#N^-#dqO02r9`gtYaGdT@Te?r{pZ|7)I8H`x
+zs@ZtqAI}LEjyVk}`Vtq9ecrx+nO8u7<NW0-OE{0^PT!tT$EnFqJ-b>t7jSU!GDxsn
+z=<=IwSNO^Lo0V#Y&kJR$q+UeK3uXGpG+lv{O@O0v!5q$mK8Mt|PngHq%{X}7+snG$
+zK7>hvYA&44w~liX2kSCF-=pgC{M!R0*#rbQ7AEZZyS+1G!S)0DI0XbaCZ>sOW0gpm
+zu)V<&B<m?%m)6~UW7qZ%_dv2Ui`ViTiQ9X4`-Vu6>^zr!5B+B=*lkz%50ZUp7kvBw
+z@6d1CA5^mSvT;@!W*M6lB_&%-XLMl`-@g9@CnMW*hXP)%?H{DMBA7Xjn6)kLek*ut
+zdw@LG9!7g3Gh+kulr+;+b5mnOLsJVw3rmw!lQc_1Bjcnb3)8d|6H{{&QzHXQi&RT9
+z(_};Q<g`>16HAjcqtsM$<CM+Wmo=CP7dWqX@}A}5=oH>=?!kNY`1S)wcm)J_Chjm6
+z-a2#V8BqPWS@BT{Ke$%aKFT~p6s3(}H{ob%^+`)-a2taQ(#GI|v@srU41ByzySfo~
+z8^eS{I)AB5;Y?7YLO_7S^~Rj;&y%KY1aV<)jQU>}CF+AN|DkFdBMsKZNXu-Smo^>R
+z#z>nEZDXXNwK3ABL)#b-<<K@p+H`0eBMnCz1FRaojiDgU_1ml7X*F^i!;wdsDJo6u
+zJ*debAi!~OizCO2Tpio(A8xZRfi^M}O1G+ICJ3*GHZr!DNjYAaJ+&L81J=kmxw0a~
+zob{XtypfTHyOEKG(a1=HH8RpL8X0N$8X0NR!HtYF3m$&*s{YiD+{kzo#QMw2AdDT_
+z$WT?Ba#Q_MNFvrohVAVW|62?e+d&%{@6Rjpsl0A+z}?8$|Msy5=T=p5Xd~m+;ews2
+z+qK%TH8T1QO>b~LZk2#GGTwX2&Uel`dlhRV<3NVvl69&9rO-wOv(-jJEnY8B%Nj=`
+z!_w0)vQErj6WYj#X*tYoylwR-tc?uj3zcDdo%aKvjf`6i=VZ3r{{9AkBV%`|U5u`4
+zCMPW#89EOpcKy@cafwhPBlm;ak4;XyHq)e$5wzp7J+q8wFYOu`uk!!92`)`M4Q*s}
+z%zpi*@`d+Nnlv)jn1!86n3C)XZDhz>{yN;5!LCb_Mn<W0niQKFN6t`bWZXKfe1Iz;
+zJ$7U^G8AVi&ZtbSSqg1rM4vL{Ie%B-8?=$Z8Ibc+UF{hgw2?9U?&sb@p5P78Mg~9g
+z1oi|5tC`S7#(X>N2fzM^hCmw`eXg~Bfm3DI5ZTCZcy+{z-+MvB05mcj|DSji|AYT7
+Zw2`6rE`#aMqmzq}8yRWSwU07S1pu2V6Kntg
+
+delta 37
+scmZ3mC*VbwWkU;N3sVbo3rh=Y3tJ0&3r7oQ3s(zw3r`F07QPHu00l%0RsaA1
+
+diff --git a/.devenv/profile b/.devenv/profile
+index f715531..44837de 120000
+--- a/.devenv/profile
++++ b/.devenv/profile
+@@ -1 +1 @@
+-/nix/store/yk38bz743p3708fp8xsa6chg2grzmadd-devenv-profile
+\ No newline at end of file
++/nix/store/dxgd6j2wp5rvfcxxrm7h899ghnfxyy5m-devenv-profile
+\ No newline at end of file
+diff --git a/Cargo.lock b/Cargo.lock
+index b3f3a79..2e94fa7 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -50,6 +50,24 @@ version = "1.0.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "2fd1289c04a9ea8cb22300a459a72a385d7c73d3259e2ed7dcb2af674838cfa9"
+ 
++[[package]]
++name = "console"
++version = "0.15.11"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "054ccb5b10f9f2cbf51eb355ca1d05c2d279ce1804688d0db74b4733a5aeafd8"
++dependencies = [
++ "encode_unicode",
++ "libc",
++ "once_cell",
++ "windows-sys 0.59.0",
++]
++
++[[package]]
++name = "encode_unicode"
++version = "1.0.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
++
+ [[package]]
+ name = "errno"
+ version = "0.3.14"
+@@ -57,7 +75,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
+ dependencies = [
+  "libc",
+- "windows-sys",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -115,6 +133,19 @@ dependencies = [
+  "rustversion",
+ ]
+ 
++[[package]]
++name = "insta"
++version = "1.46.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "e82db8c87c7f1ccecb34ce0c24399b8a73081427f3c7c50a5d597925356115e4"
++dependencies = [
++ "console",
++ "once_cell",
++ "serde",
++ "similar",
++ "tempfile",
++]
++
+ [[package]]
+ name = "libc"
+ version = "0.2.177"
+@@ -147,9 +178,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "once_cell"
+-version = "1.19.0"
++version = "1.21.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
++checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+ 
+ [[package]]
+ name = "pin-project-lite"
+@@ -328,12 +359,16 @@ version = "0.1.0"
+ dependencies = [
+  "bumpalo",
+  "hashbrown",
++ "insta",
+  "proptest",
+  "pyo3",
+  "serde",
+  "static_assertions",
++ "test-case",
+  "thiserror",
+  "tracing",
++ "unicode-normalization",
++ "unicode-segmentation",
+ ]
+ 
+ [[package]]
+@@ -352,7 +387,7 @@ dependencies = [
+  "errno",
+  "libc",
+  "linux-raw-sys",
+- "windows-sys",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -403,6 +438,12 @@ dependencies = [
+  "syn",
+ ]
+ 
++[[package]]
++name = "similar"
++version = "2.7.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
++
+ [[package]]
+ name = "static_assertions"
+ version = "1.1.0"
+@@ -436,7 +477,40 @@ dependencies = [
+  "getrandom",
+  "once_cell",
+  "rustix",
+- "windows-sys",
++ "windows-sys 0.61.2",
++]
++
++[[package]]
++name = "test-case"
++version = "3.3.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "eb2550dd13afcd286853192af8601920d959b14c401fcece38071d53bf0768a8"
++dependencies = [
++ "test-case-macros",
++]
++
++[[package]]
++name = "test-case-core"
++version = "3.3.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "adcb7fd841cd518e279be3d5a3eb0636409487998a4aff22f3de87b81e88384f"
++dependencies = [
++ "cfg-if",
++ "proc-macro2",
++ "quote",
++ "syn",
++]
++
++[[package]]
++name = "test-case-macros"
++version = "3.3.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5c89e72a01ed4c579669add59014b9a524d609c0c88c6a585ce37485879f6ffb"
++dependencies = [
++ "proc-macro2",
++ "quote",
++ "syn",
++ "test-case-core",
+ ]
+ 
+ [[package]]
+@@ -459,6 +533,21 @@ dependencies = [
+  "syn",
+ ]
+ 
++[[package]]
++name = "tinyvec"
++version = "1.10.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bfa5fdc3bce6191a1dbc8c02d5c8bffcf557bafa17c124c5264a458f1b0613fa"
++dependencies = [
++ "tinyvec_macros",
++]
++
++[[package]]
++name = "tinyvec_macros"
++version = "0.1.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
++
+ [[package]]
+ name = "tracing"
+ version = "0.1.43"
+@@ -502,6 +591,21 @@ version = "1.0.19"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "f63a545481291138910575129486daeaf8ac54aee4387fe7906919f7830c7d9d"
+ 
++[[package]]
++name = "unicode-normalization"
++version = "0.1.25"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8"
++dependencies = [
++ "tinyvec",
++]
++
++[[package]]
++name = "unicode-segmentation"
++version = "1.12.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
++
+ [[package]]
+ name = "unindent"
+ version = "0.2.4"
+@@ -532,6 +636,15 @@ version = "0.2.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+ 
++[[package]]
++name = "windows-sys"
++version = "0.59.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
++dependencies = [
++ "windows-targets",
++]
++
+ [[package]]
+ name = "windows-sys"
+ version = "0.61.2"
+@@ -541,6 +654,70 @@ dependencies = [
+  "windows-link",
+ ]
+ 
++[[package]]
++name = "windows-targets"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9b724f72796e036ab90c1021d4780d4d3d648aca59e491e6b98e725b84e99973"
++dependencies = [
++ "windows_aarch64_gnullvm",
++ "windows_aarch64_msvc",
++ "windows_i686_gnu",
++ "windows_i686_gnullvm",
++ "windows_i686_msvc",
++ "windows_x86_64_gnu",
++ "windows_x86_64_gnullvm",
++ "windows_x86_64_msvc",
++]
++
++[[package]]
++name = "windows_aarch64_gnullvm"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3"
++
++[[package]]
++name = "windows_aarch64_msvc"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469"
++
++[[package]]
++name = "windows_i686_gnu"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "8e9b5ad5ab802e97eb8e295ac6720e509ee4c243f69d781394014ebfe8bbfa0b"
++
++[[package]]
++name = "windows_i686_gnullvm"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66"
++
++[[package]]
++name = "windows_i686_msvc"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66"
++
++[[package]]
++name = "windows_x86_64_gnu"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78"
++
++[[package]]
++name = "windows_x86_64_gnullvm"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d"
++
++[[package]]
++name = "windows_x86_64_msvc"
++version = "0.52.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
++
+ [[package]]
+ name = "wit-bindgen"
+ version = "0.46.0"
+diff --git a/crates/core/src/process/mod.rs b/crates/core/src/process/mod.rs
+index 3006aee..8f70a3b 100644
+--- a/crates/core/src/process/mod.rs
++++ b/crates/core/src/process/mod.rs
+@@ -7,14 +7,15 @@ pub use layer::{ExecutionMode, NormalizationLayer};
+ pub use processed_text::ProcessedText;
+ 
+ #[cfg(not(feature = "std"))]
+-use alloc::{boxed::Box, string::ToString, vec::Vec};
++use alloc::{boxed::Box, format, string::String, string::ToString, vec, vec::Vec};
+ 
++use crate::char_mapping::CharMapping;
+ use crate::error::ProcessError;
+ use crate::normalize::Normalizer;
++use crate::text_store::TextStoreBuilder;
+ use crate::tokenize::Tokenizer;
+ 
+ /// Orchestrator chaining normalizers then a tokenizer.
+-/// Stub -- full implementation in Plan 07.
+ pub struct TextProcessor {
+     normalizers: Vec<Box<dyn Normalizer>>,
+     tokenizer: Box<dyn Tokenizer>,
+@@ -22,23 +23,392 @@ pub struct TextProcessor {
+ }
+ 
+ impl TextProcessor {
+-    /// Create a new text processor with the given normalizers, tokenizer, and mode.
++    /// Create a new text processor. Validates normalizer name uniqueness.
+     pub fn new(
+         normalizers: Vec<Box<dyn Normalizer>>,
+         tokenizer: Box<dyn Tokenizer>,
+         mode: ExecutionMode,
+-    ) -> Self {
+-        Self {
++    ) -> Result<Self, ProcessError> {
++        // Validate normalizer name uniqueness
++        let mut seen = Vec::new();
++        for norm in &normalizers {
++            let name = norm.name();
++            if seen.contains(&name) {
++                return Err(ProcessError::Configuration(format!(
++                    "duplicate normalizer name: '{name}'"
++                )));
++            }
++            seen.push(name);
++        }
++        Ok(Self {
+             normalizers,
+             tokenizer,
+             mode,
++        })
++    }
++
++    /// Process input text through the normalizer chain then tokenizer.
++    pub fn process(&self, input: &str) -> Result<ProcessedText, ProcessError> {
++        if input.is_empty() {
++            let store = TextStoreBuilder::new();
++            return Ok(ProcessedText {
++                original: String::new(),
++                layers: vec![],
++                normalized: String::new(),
++                tokens: vec![],
++                composed_mapping: None,
++                text_store: store.build(),
++                skipped_normalizers: vec![],
++            });
++        }
++
++        let mut current_text = input.to_string();
++        let mut layers: Vec<NormalizationLayer> = Vec::new();
++        let mut composed: Option<CharMapping> = None;
++        let mut skipped: Vec<String> = Vec::new();
++
++        for normalizer in &self.normalizers {
++            let result = normalizer.normalize(&current_text).map_err(|source| {
++                ProcessError::NormalizationFailed {
++                    normalizer: normalizer.name().to_string(),
++                    source,
++                }
++            })?;
++
++            // Compose mapping
++            composed = Some(match &composed {
++                None => result.mapping.clone(),
++                Some(prev) => prev.compose(&result.mapping).map_err(|source| {
++                    ProcessError::NormalizationFailed {
++                        normalizer: normalizer.name().to_string(),
++                        source,
++                    }
++                })?,
++            });
++
++            match self.mode {
++                ExecutionMode::All => {
++                    layers.push(NormalizationLayer {
++                        name: normalizer.name().to_string(),
++                        text: result.text.clone(),
++                        mapping: result.mapping,
++                    });
++                }
++                ExecutionMode::Minimal => {
++                    skipped.push(normalizer.name().to_string());
++                }
++            }
++
++            current_text = result.text;
++        }
++
++        // Build mapping for tokenizer: composed if available, otherwise identity
++        let final_mapping = match &composed {
++            Some(m) => m.clone(),
++            None => CharMapping::identity(current_text.len() as u32).map_err(|source| {
++                ProcessError::NormalizationFailed {
++                    normalizer: "identity".to_string(),
++                    source,
++                }
++            })?,
++        };
++
++        let mut store = TextStoreBuilder::new();
++        let tokens = self
++            .tokenizer
++            .tokenize(&current_text, &final_mapping, &mut store)
++            .map_err(|source| ProcessError::TokenizationFailed {
++                tokenizer: self.tokenizer.name().to_string(),
++                source,
++            })?;
++
++        Ok(ProcessedText {
++            original: input.to_string(),
++            layers,
++            normalized: current_text,
++            tokens,
++            composed_mapping: composed,
++            text_store: store.build(),
++            skipped_normalizers: skipped,
++        })
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::error::{NormalizeError, TokenizeError};
++    use crate::normalize::lowercase::Lowercase;
++    use crate::normalize::whitespace::WhitespaceNormalizer;
++    use crate::normalize::{NormalizationResult, Normalizer};
++    use crate::token::Token;
++
++    use crate::tokenize::word::WordTokenizer;
++
++    fn processor_lc_ws() -> TextProcessor {
++        TextProcessor::new(
++            vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
++            Box::new(WordTokenizer),
++            ExecutionMode::All,
++        )
++        .unwrap()
++    }
++
++    // ── Construction tests ───────────────────────────────────────────
++
++    #[test]
++    fn new_with_unique_names_succeeds() {
++        let result = TextProcessor::new(
++            vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
++            Box::new(WordTokenizer),
++            ExecutionMode::All,
++        );
++        assert!(result.is_ok());
++    }
++
++    #[test]
++    fn new_with_duplicate_names_fails() {
++        let result = TextProcessor::new(
++            vec![Box::new(Lowercase), Box::new(Lowercase)],
++            Box::new(WordTokenizer),
++            ExecutionMode::All,
++        );
++        assert!(matches!(result, Err(ProcessError::Configuration(_))));
++    }
++
++    #[test]
++    fn new_with_no_normalizers_succeeds() {
++        let result = TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All);
++        assert!(result.is_ok());
++    }
++
++    // ── Pipeline execution tests ─────────────────────────────────────
++
++    #[test]
++    fn process_basic_pipeline() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert_eq!(result.normalized, "hello world");
++        assert_eq!(result.tokens.len(), 2);
++        assert_eq!(
++            result.text_store.resolve(result.tokens[0].text_id).unwrap(),
++            "hello"
++        );
++        assert_eq!(
++            result.text_store.resolve(result.tokens[1].text_id).unwrap(),
++            "world"
++        );
++    }
++
++    #[test]
++    fn process_no_normalizers() {
++        let proc = TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All).unwrap();
++        let result = proc.process("hello world").unwrap();
++        assert_eq!(result.normalized, "hello world");
++        assert_eq!(result.tokens.len(), 2);
++        assert!(result.composed_mapping.is_none());
++    }
++
++    #[test]
++    fn process_empty_input() {
++        let proc = processor_lc_ws();
++        let result = proc.process("").unwrap();
++        assert!(result.tokens.is_empty());
++        assert!(result.layers.is_empty());
++        assert_eq!(result.normalized, "");
++        assert_eq!(result.original, "");
++    }
++
++    // ── CharMapping composition tests ────────────────────────────────
++
++    #[test]
++    fn composed_mapping_through_two_normalizers() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        let mapping = result.composed_mapping.as_ref().unwrap();
++        // Original 'W' at byte 7 -> lowercase 'w' at byte 7, then whitespace collapses
++        // "hello  world" -> "hello world" where 'w' is at byte 6
++        let norm_pos = mapping.to_normalized(7).unwrap();
++        assert_eq!(norm_pos, 6);
++    }
++
++    #[test]
++    fn composed_mapping_identity_with_no_normalizers() {
++        let proc = TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All).unwrap();
++        let result = proc.process("hello").unwrap();
++        assert!(result.composed_mapping.is_none());
++    }
++
++    // ── Layer tests ──────────────────────────────────────────────────
++
++    #[test]
++    fn layers_stored_in_all_mode() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert_eq!(result.layers.len(), 2);
++    }
++
++    #[test]
++    fn layer_by_name() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        let layer = result.layer("lowercase").unwrap();
++        assert_eq!(layer.text, "hello  world");
++    }
++
++    #[test]
++    fn layer_not_found_returns_none() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert!(result.layer("nonexistent").is_none());
++    }
++
++    #[test]
++    fn mapping_to_layer_composes_correctly() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++
++        // mapping_to_layer("lowercase") = mapping from original to post-lowercase
++        let lc_mapping = result.mapping_to_layer("lowercase").unwrap();
++        // 'H' at 0 -> 'h' at 0 (identity for lowercase of same-length chars)
++        assert_eq!(lc_mapping.to_normalized(0).unwrap(), 0);
++
++        // mapping_to_layer("whitespace") = mapping from original to post-whitespace
++        let ws_mapping = result.mapping_to_layer("whitespace").unwrap();
++        // Original 'W' at byte 7 -> normalized 'w' at byte 6
++        assert_eq!(ws_mapping.to_normalized(7).unwrap(), 6);
++    }
++
++    #[test]
++    fn mapping_to_layer_not_found() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        let err = result.mapping_to_layer("nonexistent").unwrap_err();
++        assert!(matches!(err, ProcessError::LayerNotFound(_)));
++    }
++
++    // ── Minimal mode tests ───────────────────────────────────────────
++
++    #[test]
++    fn minimal_mode_stores_no_layers() {
++        let proc = TextProcessor::new(
++            vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
++            Box::new(WordTokenizer),
++            ExecutionMode::Minimal,
++        )
++        .unwrap();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert!(result.layers.is_empty());
++    }
++
++    #[test]
++    fn minimal_mode_records_skipped() {
++        let proc = TextProcessor::new(
++            vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
++            Box::new(WordTokenizer),
++            ExecutionMode::Minimal,
++        )
++        .unwrap();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert_eq!(result.skipped_normalizers.len(), 2);
++        assert_eq!(result.skipped_normalizers[0], "lowercase");
++        assert_eq!(result.skipped_normalizers[1], "whitespace");
++    }
++
++    #[test]
++    fn all_mode_records_no_skipped() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert!(result.skipped_normalizers.is_empty());
++    }
++
++    // ── Error propagation tests ──────────────────────────────────────
++
++    struct FailingNormalizer;
++    impl Normalizer for FailingNormalizer {
++        fn normalize(&self, _input: &str) -> Result<NormalizationResult, NormalizeError> {
++            Err(NormalizeError::CompositionFailed)
++        }
++        fn name(&self) -> &str {
++            "failing"
++        }
++    }
++
++    struct FailingTokenizer;
++    impl Tokenizer for FailingTokenizer {
++        fn tokenize(
++            &self,
++            _text: &str,
++            _mapping: &CharMapping,
++            _store: &mut TextStoreBuilder,
++        ) -> Result<Vec<Token>, TokenizeError> {
++            Err(TokenizeError::EmptyResult)
++        }
++        fn name(&self) -> &str {
++            "failing"
+         }
+     }
+ 
+-    /// Process input text through the pipeline. Currently a stub.
+-    pub fn process(&self, _input: &str) -> Result<ProcessedText, ProcessError> {
+-        Err(ProcessError::Configuration(
+-            "TextProcessor not yet implemented".to_string(),
+-        ))
++    #[test]
++    fn normalizer_error_propagates() {
++        let proc = TextProcessor::new(
++            vec![Box::new(FailingNormalizer)],
++            Box::new(WordTokenizer),
++            ExecutionMode::All,
++        )
++        .unwrap();
++        let err = proc.process("hello").unwrap_err();
++        match err {
++            ProcessError::NormalizationFailed { normalizer, .. } => {
++                assert_eq!(normalizer, "failing");
++            }
++            other => panic!("Expected NormalizationFailed, got: {other:?}"),
++        }
++    }
++
++    #[test]
++    fn tokenizer_error_propagates() {
++        let proc =
++            TextProcessor::new(vec![], Box::new(FailingTokenizer), ExecutionMode::All).unwrap();
++        let err = proc.process("hello").unwrap_err();
++        match err {
++            ProcessError::TokenizationFailed { tokenizer, .. } => {
++                assert_eq!(tokenizer, "failing");
++            }
++            other => panic!("Expected TokenizationFailed, got: {other:?}"),
++        }
++    }
++
++    // ── ProcessedText field tests ────────────────────────────────────
++
++    #[test]
++    fn processed_text_has_text_store() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello World").unwrap();
++        for tok in &result.tokens {
++            assert!(result.text_store.resolve(tok.text_id).is_ok());
++        }
++    }
++
++    #[test]
++    fn processed_text_original_preserved() {
++        let proc = processor_lc_ws();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert_eq!(result.original, "Hello  WORLD");
++    }
++
++    // ── Minimal mode still produces correct tokens ───────────────────
++
++    #[test]
++    fn minimal_mode_still_normalizes_and_tokenizes() {
++        let proc = TextProcessor::new(
++            vec![Box::new(Lowercase), Box::new(WhitespaceNormalizer)],
++            Box::new(WordTokenizer),
++            ExecutionMode::Minimal,
++        )
++        .unwrap();
++        let result = proc.process("Hello  WORLD").unwrap();
++        assert_eq!(result.normalized, "hello world");
++        assert_eq!(result.tokens.len(), 2);
+     }
+ }
+diff --git a/crates/core/src/process/processed_text.rs b/crates/core/src/process/processed_text.rs
+index 7645abc..bfc4a0c 100644
+--- a/crates/core/src/process/processed_text.rs
++++ b/crates/core/src/process/processed_text.rs
+@@ -1,14 +1,14 @@
+ //! ProcessedText: result of the full text processing pipeline.
+ 
+ #[cfg(not(feature = "std"))]
+-use alloc::{string::String, sync::Arc, vec::Vec};
++use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
+ #[cfg(feature = "std")]
+ use std::sync::Arc;
+ 
+ use core::fmt;
+ 
+ use crate::char_mapping::CharMapping;
+-use crate::error::NormalizeError;
++use crate::error::ProcessError;
+ use crate::text_store::TextStore;
+ use crate::token::Token;
+ 
+@@ -24,8 +24,8 @@ pub struct ProcessedText {
+     pub normalized: String,
+     /// Tokens produced from the final normalized text.
+     pub tokens: Vec<Token>,
+-    /// Composed CharMapping: original -> final normalized.
+-    pub composed_mapping: CharMapping,
++    /// Composed CharMapping: original -> final normalized. None if no normalizers ran.
++    pub composed_mapping: Option<CharMapping>,
+     /// Text store containing all interned strings.
+     pub text_store: Arc<TextStore>,
+     /// Names of normalizers configured but NOT stored (Minimal mode).
+@@ -51,26 +51,33 @@ impl fmt::Debug for ProcessedText {
+ 
+ impl ProcessedText {
+     /// Look up a layer by normalizer name.
++    #[inline]
+     pub fn layer(&self, name: &str) -> Option<&NormalizationLayer> {
+         self.layers.iter().find(|l| l.name == name)
+     }
+ 
+-    /// Get composed CharMapping from original to a specific named layer.
+-    pub fn mapping_to_layer(&self, name: &str) -> Result<CharMapping, NormalizeError> {
+-        let idx = self
++    /// Compute the composed CharMapping from original text to the output
++    /// of the named normalization layer.
++    pub fn mapping_to_layer(&self, name: &str) -> Result<CharMapping, ProcessError> {
++        let target_idx = self
+             .layers
+             .iter()
+             .position(|l| l.name == name)
+-            .ok_or(NormalizeError::InvalidPosition(0))?;
++            .ok_or_else(|| ProcessError::LayerNotFound(name.to_string()))?;
+ 
+-        if idx == 0 {
+-            return Ok(self.layers[0].mapping.clone());
++        let mut composed: Option<CharMapping> = None;
++        for layer in &self.layers[..=target_idx] {
++            composed = Some(match composed {
++                None => layer.mapping.clone(),
++                Some(prev) => prev.compose(&layer.mapping).map_err(|source| {
++                    ProcessError::NormalizationFailed {
++                        normalizer: layer.name.clone(),
++                        source,
++                    }
++                })?,
++            });
+         }
+ 
+-        let mut composed = self.layers[0].mapping.clone();
+-        for layer in &self.layers[1..=idx] {
+-            composed = composed.compose(&layer.mapping)?;
+-        }
+-        Ok(composed)
++        composed.ok_or_else(|| ProcessError::LayerNotFound(name.to_string()))
+     }
+ }
+diff --git a/crates/core/src/tokenize/char_ngram.rs b/crates/core/src/tokenize/char_ngram.rs
+index 43a1483..58762d1 100644
+--- a/crates/core/src/tokenize/char_ngram.rs
++++ b/crates/core/src/tokenize/char_ngram.rs
+@@ -252,6 +252,7 @@ mod tests {
+ mod proptests {
+     use super::*;
+     use proptest::prelude::*;
++    use unicode_segmentation::UnicodeSegmentation;
+ 
+     proptest! {
+         #[test]
