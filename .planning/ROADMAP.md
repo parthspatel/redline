@@ -225,6 +225,45 @@ Applied to every phase:
 
 ---
 
+## Phase 4.1: Realistic Test Fixtures (INSERTED)
+
+**Goal:** Improve test coverage across all modules by replacing synthetic/minimal test data with real-world phrases, sentences, and paragraphs that exercise realistic text processing scenarios.
+
+**Requirements:**
+
+| ID | Description |
+|----|-------------|
+| TFIX-01 | Shared test fixtures module with real-world English text (prose, technical, literary) |
+| TFIX-02 | Enhance normalizer tests with realistic multi-sentence paragraphs |
+| TFIX-03 | Enhance tokenizer tests with real phrases, sentences, and paragraphs |
+| TFIX-04 | Enhance diff computation tests with realistic before/after document pairs |
+| TFIX-05 | Enhance metrics tests with real text that produces meaningful metric values |
+| TFIX-06 | Multi-language fixtures (CJK, accented, mixed-script) for Unicode paths |
+
+**Dependencies:** Phase 4 (all modules exist to test against)
+
+**Key Risks:**
+- Test fixture size: keep fixtures large enough to be realistic but small enough for fast CI
+- Avoid copyrighted text: use public domain or original prose
+
+**Success Criteria:**
+1. Every module has at least one test using a multi-sentence paragraph (not just "hello world")
+2. Readability metrics tested against text with known grade levels (e.g., Hemingway vs. academic)
+3. Diff tests use realistic edit scenarios (typo fix, paragraph rewrite, sentence insertion)
+4. All existing tests still pass (no regressions)
+5. Test fixtures are shared via a common module to avoid duplication
+
+**Plans:** 4 plans in 2 waves
+
+| Plan | Wave | Type | Description | Depends On |
+|------|------|------|-------------|------------|
+| 04.1-01 | 1 | execute | Shared fixtures module (constants, helpers, diff pairs, multilang) | -- |
+| 04.1-02 | 2 | execute | Enhance normalizer/tokenizer/pipeline tests with realistic fixtures | 04.1-01 |
+| 04.1-03 | 2 | execute | Enhance diff tests with realistic before/after document pairs | 04.1-01 |
+| 04.1-04 | 2 | execute | Enhance metrics tests with readability ordering and realistic pairwise | 04.1-01 |
+
+---
+
 ## Phase 5: Analysis Framework
 
 **Goal:** Pluggable analyzer system with dependency resolution that enriches diff results with semantic insights.
@@ -391,7 +430,8 @@ Applied to every phase:
 | 2 | Text Processing | 8 | ✓ Complete | Phase 1 |
 | 2.1 | Test Coverage & Simulation | 5 | Planned | Phase 2 (INSERTED) |
 | 3 | Diff Computation | 9 | Planned (5 plans) | Phase 1, 2 |
-| 4 | Metrics Engine | 6 | Planned (8 plans) | Phase 1, 2, 3 |
+| 4 | Metrics Engine | 6 | ✓ Complete | Phase 1, 2, 3 |
+| 4.1 | Realistic Test Fixtures | 6 | Planned (4 plans) | Phase 4 (INSERTED) |
 | 5 | Analysis Framework | 8 | Pending | Phase 3, 4 |
 | 6 | Orchestration & Config | 8 | Pending | Phase 2-5 |
 | 7 | Async Support | 5 | Pending | Phase 6 |
