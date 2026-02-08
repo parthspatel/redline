@@ -214,7 +214,7 @@ fn hedging_assertive_score(words: &[&str]) -> f64 {
 
 fn avg_sentence_length_words(text: &str) -> f64 {
     let sentences: Vec<&str> = text
-        .split(|c: char| c == '.' || c == '!' || c == '?')
+        .split(['.', '!', '?'])
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .collect();

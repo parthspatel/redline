@@ -65,8 +65,7 @@ impl AnalysisCoordinator {
                     report.execution_metadata.push(AnalyzerExecutionMeta {
                         analyzer_id: analyzer_id.clone(),
                         status: AnalyzerStatus::Failed(format!(
-                            "analyzer '{}' not found in registry",
-                            analyzer_id
+                            "analyzer '{analyzer_id}' not found in registry"
                         )),
                         duration: core::time::Duration::ZERO,
                         order_index,
@@ -90,7 +89,7 @@ impl AnalysisCoordinator {
             if let Some(failed_dep) = skip_reason {
                 report.execution_metadata.push(AnalyzerExecutionMeta {
                     analyzer_id: analyzer_id.clone(),
-                    status: AnalyzerStatus::Skipped(format!("dependency '{}' failed", failed_dep)),
+                    status: AnalyzerStatus::Skipped(format!("dependency '{failed_dep}' failed")),
                     duration: core::time::Duration::ZERO,
                     order_index,
                 });
@@ -116,7 +115,7 @@ impl AnalysisCoordinator {
                 Ok(Err(err)) => {
                     report.execution_metadata.push(AnalyzerExecutionMeta {
                         analyzer_id: analyzer_id.clone(),
-                        status: AnalyzerStatus::Failed(format!("{}", err)),
+                        status: AnalyzerStatus::Failed(format!("{err}")),
                         duration,
                         order_index,
                     });
@@ -124,9 +123,9 @@ impl AnalysisCoordinator {
                 }
                 Err(panic_payload) => {
                     let msg = if let Some(s) = panic_payload.downcast_ref::<String>() {
-                        format!("panic: {}", s)
+                        format!("panic: {s}")
                     } else if let Some(s) = panic_payload.downcast_ref::<&str>() {
-                        format!("panic: {}", s)
+                        format!("panic: {s}")
                     } else {
                         "panic: <unknown>".to_string()
                     };
