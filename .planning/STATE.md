@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 4 (Metrics Engine) -- Complete
-**Last Action:** Phase 4 executed (8/8 plans, 37 metrics, 831 tests)
+**Current Phase:** Phase 4.1 (Realistic Test Fixtures) -- Planned
+**Last Action:** Phase 4.1 planned (4 plans in 2 waves, verified)
 **Updated:** 2026-02-07
 
 ## Project Reference
@@ -12,7 +12,7 @@
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 5 -- Analysis Framework (next)
+**Current focus:** Phase 4.1 -- Realistic Test Fixtures (execute next)
 
 ## Progress
 
@@ -23,6 +23,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 2.1 - Test Coverage & Simulation | ✓ Complete | 5/5 |
 | 3 - Diff Computation | ✓ Complete | 5/5 |
 | 4 - Metrics Engine | ✓ Complete | 8/8 |
+| 4.1 - Realistic Test Fixtures | Planned | 0/4 |
 | 5 - Analysis Framework | Pending | 0/? |
 | 6 - Orchestration & Config | Pending | 0/? |
 | 7 - Async Support | Pending | 0/? |
@@ -124,15 +125,19 @@ Progress: █████░░░░░ 50%
 - Phase 2.1 inserted after Phase 2: Test Coverage Enhancement & Deterministic Simulation Testing (URGENT)
   - Reason: Harden Phase 1+2 code before building diff computation on top
   - Status: ✓ Complete (2026-02-07)
+- Phase 4.1 inserted after Phase 4: Realistic Test Fixtures (URGENT)
+  - Reason: Replace synthetic test data with real-world phrases, sentences, and paragraphs across all modules
+  - Status: Planned
 
 ## Context for Next Session
 
 To continue work on this project:
 
 1. Phase 4 complete — 37 metrics, 831 tests passing
-2. Run `/gsd:plan-phase 5` to plan Phase 5 (Analysis Framework)
-3. Phase 5 builds on metrics engine: analyzers compose metrics into higher-level analysis reports
+2. Phase 4.1 planned — 4 plans in 2 waves, verified by checker
+3. Run `/gsd:execute-phase 4.1` to execute Phase 4.1
+4. After 4.1, run `/gsd:plan-phase 5` for Phase 5 (Analysis Framework)
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 4 execution complete (8/8 plans, 37 metrics, 831 tests)*
+*Last updated: 2026-02-07 after Phase 4.1 planning complete (4 plans, 2 waves, verified)*
