@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 4 (Metrics Engine) -- Planned
-**Last Action:** Phase 4 planned (8 plans in 5 waves, verification passed)
+**Current Phase:** Phase 4 (Metrics Engine) -- Complete
+**Last Action:** Phase 4 executed (8/8 plans, 37 metrics, 831 tests)
 **Updated:** 2026-02-07
 
 ## Project Reference
@@ -12,7 +12,7 @@
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 4 -- Metrics Engine (next)
+**Current focus:** Phase 5 -- Analysis Framework (next)
 
 ## Progress
 
@@ -22,14 +22,14 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 2 - Text Processing | ✓ Complete | 8/8 |
 | 2.1 - Test Coverage & Simulation | ✓ Complete | 5/5 |
 | 3 - Diff Computation | ✓ Complete | 5/5 |
-| 4 - Metrics Engine | ◆ Planned | 8/8 |
+| 4 - Metrics Engine | ✓ Complete | 8/8 |
 | 5 - Analysis Framework | Pending | 0/? |
 | 6 - Orchestration & Config | Pending | 0/? |
 | 7 - Async Support | Pending | 0/? |
 | 8 - Python Bindings | Pending | 0/? |
 | 9 - WASM Target | Pending | 0/? |
 
-Progress: ████░░░░░░ 40%
+Progress: █████░░░░░ 50%
 
 ## Artifacts
 
@@ -79,14 +79,15 @@ Progress: ████░░░░░░ 40%
 | Phase 3 Verification | ✓ Passed | `.planning/phases/03-diff-computation/03-VERIFICATION.md` |
 | Phase 4 Context | Complete | `.planning/phases/04-metrics-engine/04-CONTEXT.md` |
 | Phase 4 Research | Complete | `.planning/phases/04-metrics-engine/04-RESEARCH.md` |
-| Phase 4 Plan 01 | ○ Planned | `.planning/phases/04-metrics-engine/04-01-PLAN.md` |
-| Phase 4 Plan 02 | ○ Planned | `.planning/phases/04-metrics-engine/04-02-PLAN.md` |
-| Phase 4 Plan 03 | ○ Planned | `.planning/phases/04-metrics-engine/04-03-PLAN.md` |
-| Phase 4 Plan 04 | ○ Planned | `.planning/phases/04-metrics-engine/04-04-PLAN.md` |
-| Phase 4 Plan 05 | ○ Planned | `.planning/phases/04-metrics-engine/04-05-PLAN.md` |
-| Phase 4 Plan 06 | ○ Planned | `.planning/phases/04-metrics-engine/04-06-PLAN.md` |
-| Phase 4 Plan 07 | ○ Planned | `.planning/phases/04-metrics-engine/04-07-PLAN.md` |
-| Phase 4 Plan 08 | ○ Planned | `.planning/phases/04-metrics-engine/04-08-PLAN.md` |
+| Phase 4 Plan 01 | ✓ Executed | `.planning/phases/04-metrics-engine/04-01-PLAN.md` |
+| Phase 4 Plan 02 | ✓ Executed | `.planning/phases/04-metrics-engine/04-02-PLAN.md` |
+| Phase 4 Plan 03 | ✓ Executed | `.planning/phases/04-metrics-engine/04-03-PLAN.md` |
+| Phase 4 Plan 04 | ✓ Executed | `.planning/phases/04-metrics-engine/04-04-PLAN.md` |
+| Phase 4 Plan 05 | ✓ Executed | `.planning/phases/04-metrics-engine/04-05-PLAN.md` |
+| Phase 4 Plan 06 | ✓ Executed | `.planning/phases/04-metrics-engine/04-06-PLAN.md` |
+| Phase 4 Plan 07 | ✓ Executed | `.planning/phases/04-metrics-engine/04-07-PLAN.md` |
+| Phase 4 Plan 08 | ✓ Executed | `.planning/phases/04-metrics-engine/04-08-PLAN.md` |
+| Phase 4 Summaries | ✓ Complete | `.planning/phases/04-metrics-engine/04-0{1-8}-SUMMARY.md` |
 
 ## Key Decisions Log
 
@@ -114,6 +115,9 @@ Progress: ████░░░░░░ 40%
 | Histogram uses explicit stack, not recursion | Phase 3 | Prevents stack overflow on large structured inputs |
 | Histogram tie-break: prefer middle of target | Phase 3 | Balanced splits produce better diff quality |
 | Pin serde_json <1.0.140 | Phase 3 | Avoids zmij crate using unstable select_unpredictable on nightly |
+| Pairwise metrics use token text, not StringId | Phase 4 | StringId is per-TextStore; pairwise compares across different stores |
+| foldhash::fast::FixedState for content hash | Phase 4 | DefaultHashBuilder uses random seeding; need deterministic hashing for cache |
+| Delta metrics self-contained (no engine deps) | Phase 4 | Engine can't auto-apply single-text metrics to each half of pairwise input |
 
 ## Roadmap Evolution
 
@@ -125,11 +129,10 @@ Progress: ████░░░░░░ 40%
 
 To continue work on this project:
 
-1. Phase 4 planned (8 plans across 5 waves), verification passed
-2. 606 tests passing, Criterion benchmarks established
-3. Run `/gsd:execute-phase 4` to begin Phase 4 execution
-4. Wave order: Foundation → Counts (2 batches) → Readability (2 batches) → Pairwise (2 batches) → Integration
+1. Phase 4 complete — 37 metrics, 831 tests passing
+2. Run `/gsd:plan-phase 5` to plan Phase 5 (Analysis Framework)
+3. Phase 5 builds on metrics engine: analyzers compose metrics into higher-level analysis reports
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 4 planning complete (8/8 plans, verified)*
+*Last updated: 2026-02-07 after Phase 4 execution complete (8/8 plans, 37 metrics, 831 tests)*
