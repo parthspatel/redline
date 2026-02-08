@@ -1,5 +1,7 @@
 //! Integration tests for diff pipeline: known outputs, DiffComputer, statistics, performance safety.
 
+mod common;
+
 use std::collections::HashMap;
 use std::ops::ControlFlow;
 use std::sync::Arc;
@@ -8,14 +10,10 @@ use redline_core::diff::{
     DiffAlgorithm, DiffComputer, DiffError, EditKind, Histogram, Myers, apply_operations,
 };
 use redline_core::process::ProcessedText;
-use redline_core::tokenize::WordTokenizer;
-use redline_core::{ExecutionMode, TextProcessor};
 
 /// Helper to create ProcessedText from a string (no normalizers, WordTokenizer).
 fn process_text(input: &str) -> Arc<ProcessedText> {
-    let processor =
-        TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All).unwrap();
-    Arc::new(processor.process(input).unwrap())
+    common::process_arc(input)
 }
 
 // ---- Known-output correctness (success criteria 2, 3) ----
@@ -265,4 +263,119 @@ fn is_approximate_flag() {
         .compute(&source_ids, &target_ids, None)
         .unwrap();
     assert!(output.is_approximate);
+}
+
+// ---- Realistic diff pairs (Phase 4.1 fixtures) ----
+
+#[test]
+fn typo_correction_high_similarity() {
+    use common::diff_pairs::*;
+    let source = process_text(TYPO_BEFORE);
+    let target = process_text(TYPO_AFTER);
+    let result = DiffComputer::new().compute(source, target, None).unwrap();
+
+    assert!(
+        result.statistics.similarity_ratio > 0.8,
+        "Typo correction should have high similarity, got {}",
+        result.statistics.similarity_ratio
+    );
+    assert!(
+        result.statistics.replace_count >= 1,
+        "Should have at least 1 Replace for the typo fix"
+    );
+}
+
+#[test]
+fn typo_correction_histogram_matches_myers() {
+    use common::diff_pairs::*;
+    let source = process_text(TYPO_BEFORE);
+    let target = process_text(TYPO_AFTER);
+
+    let myers_result = DiffComputer::new()
+        .compute(source.clone(), target.clone(), None)
+        .unwrap();
+    let hist_result = DiffComputer::with_algorithm(Box::new(Histogram::new()))
+        .compute(source, target, None)
+        .unwrap();
+
+    assert_eq!(
+        myers_result.statistics.edit_distance, hist_result.statistics.edit_distance,
+        "Myers and Histogram should agree on edit distance for simple typo"
+    );
+}
+
+#[test]
+fn insertion_no_deletes() {
+    use common::diff_pairs::*;
+    let source = process_text(INSERT_BEFORE);
+    let target = process_text(INSERT_AFTER);
+    let result = DiffComputer::new().compute(source, target, None).unwrap();
+
+    assert_eq!(
+        result.statistics.delete_count, 0,
+        "Pure insertion should have zero deletes"
+    );
+    assert!(
+        result.statistics.insert_count > 0,
+        "Should have insert operations"
+    );
+    assert!(
+        result.statistics.equal_count > 0,
+        "Should preserve equal tokens"
+    );
+}
+
+#[test]
+fn rewrite_low_similarity() {
+    use common::diff_pairs::*;
+    let source = process_text(REWRITE_BEFORE);
+    let target = process_text(REWRITE_AFTER);
+    let result = DiffComputer::new().compute(source, target, None).unwrap();
+
+    assert!(
+        result.statistics.similarity_ratio < 0.5,
+        "Rewrite should have low similarity, got {}",
+        result.statistics.similarity_ratio
+    );
+}
+
+#[test]
+fn multi_paragraph_diff() {
+    let source = process_text(common::SIMPLE_PROSE);
+    let target = process_text(common::LITERARY_PROSE);
+    let result = DiffComputer::new().compute(source, target, None).unwrap();
+
+    // Different prose levels should have some commonality (function words) but mostly differ
+    assert!(result.statistics.edit_distance > 0);
+    assert!(
+        result.statistics.similarity_ratio < 0.8,
+        "Different prose styles should have moderate-to-low similarity"
+    );
+}
+
+#[test]
+fn technical_prose_roundtrip() {
+    let source = process_text(common::TECHNICAL_PROSE);
+    let target = process_text(common::TECHNICAL_PROSE);
+    let result = DiffComputer::new().compute(source, target, None).unwrap();
+
+    assert!(
+        (result.statistics.similarity_ratio - 1.0).abs() < f64::EPSILON,
+        "Identical technical prose should have similarity 1.0"
+    );
+    assert_eq!(result.statistics.edit_distance, 0);
+}
+
+#[test]
+fn realistic_hunks() {
+    use common::diff_pairs::*;
+    let source = process_text(INSERT_BEFORE);
+    let target = process_text(INSERT_AFTER);
+    let result = DiffComputer::new().compute(source, target, None).unwrap();
+
+    let hunks = result.hunks(1);
+    assert!(
+        !hunks.is_empty(),
+        "Insertion diff should produce at least one hunk"
+    );
 }
