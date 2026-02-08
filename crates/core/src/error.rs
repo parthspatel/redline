@@ -29,6 +29,10 @@ pub enum RedlineError {
     /// Diff computation error.
     #[error(transparent)]
     Diff(#[from] crate::diff::error::DiffError),
+
+    /// Metrics engine error.
+    #[error(transparent)]
+    Metric(#[from] crate::metrics::MetricError),
 }
 
 /// Errors from the TextStore string interning system.

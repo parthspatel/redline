@@ -12,7 +12,9 @@ path = "src/lib.rs"
 
 [dependencies]
 bumpalo = { version = "3.19", features = ["collections", "allocator-api2"] }
+foldhash = "0.1"
 hashbrown = { version = "0.16", default-features = false, features = ["allocator-api2", "default-hasher"] }
+lru = "0.16"
 thiserror = { version = "2.0", default-features = false }
 unicode-normalization = "0.1"
 unicode-segmentation = "1.12"

@@ -12,6 +12,7 @@ compile_error!("Features `python` and `wasm` are mutually exclusive.");
 pub mod char_mapping;
 pub mod diff;
 pub mod error;
+pub mod metrics;
 pub mod normalize;
 pub mod process;
 pub mod span;
@@ -24,6 +25,9 @@ pub use diff::{
     DiffAlgorithm, DiffComputer, DiffError, DiffResult, EditKind, EditOperation, Histogram, Myers,
 };
 pub use error::RedlineError;
+pub use metrics::{
+    DependencyKind, Metric, MetricCache, MetricInput, MetricRegistry, MetricValue, MetricsEngine,
+};
 pub use normalize::{NormalizationResult, Normalizer};
 pub use process::{ExecutionMode, NormalizationLayer, ProcessedText, TextProcessor};
 pub use span::Span;
