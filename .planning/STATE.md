@@ -3,8 +3,8 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 3 (Diff Computation) -- All Plans Executed (5/5)
-**Last Action:** Plans 03-04 + 03-05 executed (property tests + benchmarks)
+**Current Phase:** Phase 3 (Diff Computation) -- ✓ Complete
+**Last Action:** Phase 3 verified (33/33 must-haves passed)
 **Updated:** 2026-02-07
 
 ## Project Reference
@@ -12,7 +12,7 @@
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 3 -- Diff Computation (next)
+**Current focus:** Phase 4 -- Metrics Engine (next)
 
 ## Progress
 
@@ -21,7 +21,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 1 - Foundation | ✓ Complete | 4/4 |
 | 2 - Text Processing | ✓ Complete | 8/8 |
 | 2.1 - Test Coverage & Simulation | ✓ Complete | 5/5 |
-| 3 - Diff Computation | ◆ Verifying | 5/5 |
+| 3 - Diff Computation | ✓ Complete | 5/5 |
 | 4 - Metrics Engine | Pending | 0/? |
 | 5 - Analysis Framework | Pending | 0/? |
 | 6 - Orchestration & Config | Pending | 0/? |
@@ -29,7 +29,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 8 - Python Bindings | Pending | 0/? |
 | 9 - WASM Target | Pending | 0/? |
 
-Progress: ███░░░░░░░ 30%
+Progress: ████░░░░░░ 40%
 
 ## Artifacts
 
@@ -76,6 +76,7 @@ Progress: ███░░░░░░░ 30%
 | Phase 3 Plan 03 | ✓ Executed | `.planning/phases/03-diff-computation/03-03-PLAN.md` |
 | Phase 3 Plan 04 | ✓ Executed | `.planning/phases/03-diff-computation/03-04-PLAN.md` |
 | Phase 3 Plan 05 | ✓ Executed | `.planning/phases/03-diff-computation/03-05-PLAN.md` |
+| Phase 3 Verification | ✓ Passed | `.planning/phases/03-diff-computation/03-VERIFICATION.md` |
 
 ## Key Decisions Log
 
@@ -99,6 +100,10 @@ Progress: ███░░░░░░░ 30%
 | Custom interner, not string-interner crate | Pre-impl | External crates don't integrate with bumpalo arena |
 | parking_lot::RwLock for CacheManager | Pre-impl | std::sync::RwLock has write starvation and deadlock risks |
 | wasm-bindgen CLI, not wasm-pack | Pre-impl | wasm-pack archived July 2025 |
+| coalesce/fuse_replaces shared in common.rs | Phase 3 | Both Myers and Histogram need these utilities; DRY refactor |
+| Histogram uses explicit stack, not recursion | Phase 3 | Prevents stack overflow on large structured inputs |
+| Histogram tie-break: prefer middle of target | Phase 3 | Balanced splits produce better diff quality |
+| Pin serde_json <1.0.140 | Phase 3 | Avoids zmij crate using unstable select_unpredictable on nightly |
 
 ## Roadmap Evolution
 
