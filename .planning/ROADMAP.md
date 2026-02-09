@@ -310,19 +310,19 @@ Applied to every phase:
 
 ## Phase 6: Orchestration & Configuration
 
-**Goal:** Single entry point coordinating the full pipeline with unified configuration, query API, and presets.
+**Goal:** Single entry point (`Redline`) coordinating the full pipeline with unified configuration, query API via predicate combinators, and 2 presets (Fast, Comprehensive).
 
 **Requirements:**
 
 | ID | Description |
 |----|-------------|
-| ORCH-01 | DiffOrchestrator: text in -> analysis out, single call |
-| ORCH-02 | ConfigBuilder with fluent API and validation |
-| ORCH-03 | 4 presets: Fast, Syntactic, Semantic, Comprehensive |
-| ORCH-04 | CacheManager with parking_lot::RwLock and configurable max size |
-| QURY-01 | Struct-based query types for filtering edit operations |
-| QURY-02 | Filter by EditKind, span ranges, token properties |
-| QURY-03 | Composable query predicates (AND, OR, NOT) |
+| ORCH-01 | Redline: text in -> analysis out, single call (`Redline::new(config).diff("old", "new")`) |
+| ORCH-02 | ConfigBuilder with fluent API, validation, and preset overrides |
+| ORCH-03 | 2 presets: Fast (diff + basic metrics), Comprehensive (everything, default) |
+| ORCH-04 | CacheManager with parking_lot::RwLock, LRU eviction, optional memory cap |
+| QURY-01 | Filter predicate combinators with &/|/! operator overloads |
+| QURY-02 | Filter by EditKind, span ranges, token count, text content, IntentCategory |
+| QURY-03 | Composable query predicates returning lazy iterators |
 | QUAL-05 | <50MB memory usage for 10K word document pair |
 
 **Dependencies:** Phase 5 (all pipeline stages exist)
@@ -330,14 +330,24 @@ Applied to every phase:
 **Key Risks:**
 - Configuration explosion -- use builder pattern with sensible defaults
 - CacheManager RwLock deadlock (Pitfall #10) -- use parking_lot, isolate lock scopes
-- Query API design is the primary consumer-facing filter interface
+- MetricsEngine is !Sync (RefCell) -- create fresh engines per diff() call
+- AnalysisReport is !Clone (Box<dyn Any>) -- wrap in Arc for caching
 
 **Success Criteria:**
-1. `DiffOrchestrator::new(config).diff("old", "new")` returns complete result (diff + metrics + analysis)
+1. `Redline::new(config).diff("old", "new")` returns complete result (diff + metrics + analysis)
 2. `ConfigBuilder::preset(Fast)` produces valid config with minimal processing
 3. Query: filter operations where `kind == Replace && span.len() > 10` returns correct subset
 4. Memory: 10K word document pair analysis uses <50MB (measured)
 5. CacheManager multi-threaded stress test passes (no deadlock)
+
+**Plans:** 5 plans in 4 waves
+
+Plans:
+- [ ] 06-01-PLAN.md -- Config types, error, result structs (wave 1)
+- [ ] 06-02-PLAN.md -- Filter predicate combinators with operator overloads (wave 1)
+- [ ] 06-03-PLAN.md -- CacheManager with parking_lot::RwLock (wave 2)
+- [ ] 06-04-PLAN.md -- Redline orchestrator and pipeline wiring (wave 3)
+- [ ] 06-05-PLAN.md -- Integration tests verifying all 5 success criteria (wave 4)
 
 ---
 
@@ -444,7 +454,7 @@ Applied to every phase:
 | 4 | Metrics Engine | 6 | ✓ Complete | Phase 1, 2, 3 |
 | 4.1 | Realistic Test Fixtures | 6 | Planned (4 plans) | Phase 4 (INSERTED) |
 | 5 | Analysis Framework | 8 | ✓ Complete | Phase 3, 4 |
-| 6 | Orchestration & Config | 8 | Pending | Phase 2-5 |
+| 6 | Orchestration & Config | 8 | Planned (5 plans) | Phase 2-5 |
 | 7 | Async Support | 5 | Pending | Phase 6 |
 | 8 | Python Bindings | 7 | Pending | Phase 6 |
 | 9 | WASM Target | 5 | Pending | Phase 6 |
