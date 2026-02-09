@@ -33,6 +33,14 @@ pub enum RedlineError {
     /// Metrics engine error.
     #[error(transparent)]
     Metric(#[from] crate::metrics::MetricError),
+
+    /// Orchestration pipeline error.
+    #[error(transparent)]
+    Orchestrate(#[from] crate::orchestrate::OrchestrateError),
+
+    /// Analysis framework error.
+    #[error(transparent)]
+    Analysis(#[from] crate::analysis::AnalysisError),
 }
 
 /// Errors from the TextStore string interning system.
