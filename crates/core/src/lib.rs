@@ -33,7 +33,8 @@ pub use metrics::{
 };
 pub use normalize::{NormalizationResult, Normalizer};
 pub use orchestrate::{
-    ConfigBuilder, Filter, FilterContext, OrchestrateError, Preset, RedlineConfig, RedlineResult,
+    CacheManager, ConfigBuilder, Filter, FilterContext, OrchestrateError, Preset, Redline,
+    RedlineConfig, RedlineResult,
 };
 pub use process::{ExecutionMode, NormalizationLayer, ProcessedText, TextProcessor};
 pub use span::Span;
