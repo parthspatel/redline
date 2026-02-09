@@ -343,11 +343,11 @@ Applied to every phase:
 **Plans:** 5 plans in 4 waves
 
 Plans:
-- [ ] 06-01-PLAN.md -- Config types, error, result structs (wave 1)
-- [ ] 06-02-PLAN.md -- Filter predicate combinators with operator overloads (wave 1)
-- [ ] 06-03-PLAN.md -- CacheManager with parking_lot::RwLock (wave 2)
-- [ ] 06-04-PLAN.md -- Redline orchestrator and pipeline wiring (wave 3)
-- [ ] 06-05-PLAN.md -- Integration tests verifying all 5 success criteria (wave 4)
+- [x] 06-01-PLAN.md -- Config types, error, result structs (wave 1)
+- [x] 06-02-PLAN.md -- Filter predicate combinators with operator overloads (wave 1)
+- [x] 06-03-PLAN.md -- CacheManager with parking_lot::RwLock (wave 2)
+- [x] 06-04-PLAN.md -- Redline orchestrator and pipeline wiring (wave 3)
+- [x] 06-05-PLAN.md -- Integration tests verifying all 5 success criteria (wave 4)
 
 ---
 
@@ -454,7 +454,7 @@ Plans:
 | 4 | Metrics Engine | 6 | ✓ Complete | Phase 1, 2, 3 |
 | 4.1 | Realistic Test Fixtures | 6 | Planned (4 plans) | Phase 4 (INSERTED) |
 | 5 | Analysis Framework | 8 | ✓ Complete | Phase 3, 4 |
-| 6 | Orchestration & Config | 8 | Planned (5 plans) | Phase 2-5 |
+| 6 | Orchestration & Config | 8 | ✓ Complete (5/5) | Phase 2-5 |
 | 7 | Async Support | 5 | Pending | Phase 6 |
 | 8 | Python Bindings | 7 | Pending | Phase 6 |
 | 9 | WASM Target | 5 | Pending | Phase 6 |

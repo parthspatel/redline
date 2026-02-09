@@ -3,16 +3,16 @@
 ## Current Status
 
 **Milestone:** v1.0
-**Current Phase:** Phase 6 (Orchestration & Config) -- Pending
-**Last Action:** Phase 5 complete (6/6 plans executed, all 5 success criteria verified, 935 tests)
-**Updated:** 2026-02-07
+**Current Phase:** Phase 7 (Async Support) -- Pending
+**Last Action:** Phase 6 complete (5/5 plans executed, all 5 success criteria verified, 1042 tests)
+**Updated:** 2026-02-09
 
 ## Project Reference
 
 See: `.planning/PROJECT.md` (updated 2026-02-05)
 
 **Core value:** Extensible, correct text diff computation with a clean plugin story
-**Current focus:** Phase 6 -- Orchestration & Config (plan next)
+**Current focus:** Phase 7 -- Async Support (plan next)
 
 ## Progress
 
@@ -25,12 +25,12 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
 | 4 - Metrics Engine | ✓ Complete | 8/8 |
 | 4.1 - Realistic Test Fixtures | ✓ Complete | 4/4 |
 | 5 - Analysis Framework | ✓ Complete | 6/6 |
-| 6 - Orchestration & Config | Pending | 0/? |
+| 6 - Orchestration & Config | ✓ Complete | 5/5 |
 | 7 - Async Support | Pending | 0/? |
 | 8 - Python Bindings | Pending | 0/? |
 | 9 - WASM Target | Pending | 0/? |
 
-Progress: ███████░░░ 65%
+Progress: ████████░░ 75%
 
 ## Artifacts
 
@@ -103,6 +103,14 @@ Progress: ███████░░░ 65%
 | Phase 5 Plan 05 | ✓ Executed | `.planning/phases/05-analysis-framework/05-05-PLAN.md` |
 | Phase 5 Plan 06 | ✓ Executed | `.planning/phases/05-analysis-framework/05-06-PLAN.md` |
 | Phase 5 Summaries | ✓ Complete | `.planning/phases/05-analysis-framework/05-0{1-6}-SUMMARY.md` |
+| Phase 6 Context | Complete | `.planning/phases/06-orchestration-config/06-CONTEXT.md` |
+| Phase 6 Research | Complete | `.planning/phases/06-orchestration-config/06-RESEARCH.md` |
+| Phase 6 Plan 01 | ✓ Executed | `.planning/phases/06-orchestration-config/06-01-PLAN.md` |
+| Phase 6 Plan 02 | ✓ Executed | `.planning/phases/06-orchestration-config/06-02-PLAN.md` |
+| Phase 6 Plan 03 | ✓ Executed | `.planning/phases/06-orchestration-config/06-03-PLAN.md` |
+| Phase 6 Plan 04 | ✓ Executed | `.planning/phases/06-orchestration-config/06-04-PLAN.md` |
+| Phase 6 Plan 05 | ✓ Executed | `.planning/phases/06-orchestration-config/06-05-PLAN.md` |
+| Phase 6 Summaries | ✓ Complete | `.planning/phases/06-orchestration-config/06-0{1-5}-SUMMARY.md` |
 
 ## Key Decisions Log
 
@@ -138,6 +146,9 @@ Progress: ███████░░░ 65%
 | IntentCategory has 7 locked variants | Phase 5 | Locked design decision; all 7 always present in output |
 | ReadabilityAnalyzer delegates to MetricsEngine | Phase 5 | No re-implementation of readability formulas |
 | Rust 2024 edition: no ref patterns in closures | Phase 5 | Use `**deg` or `*id` instead of `&deg`/`&id` patterns |
+| Fresh registries per diff() call | Phase 6 | MetricsEngine uses RefCell (!Sync); registries own Box<dyn Trait> (!Clone) |
+| RedlineResult uses Arc<AnalysisReport> | Phase 6 | AnalysisReport is !Clone (Box<dyn Any>); Arc enables cache sharing |
+| Redline stores scalar flags, not full config | Phase 6 | Trait objects moved into TextProcessor/DiffComputer at construction |
 
 ## Roadmap Evolution
 
@@ -152,10 +163,10 @@ Progress: ███████░░░ 65%
 
 To continue work on this project:
 
-1. Phase 5 complete — all 5 success criteria verified, 935 tests passing
-2. Run `/gsd:plan-phase 6` to plan Phase 6 (Orchestration & Config)
-3. Phase 6 depends on Phases 2-5 (all complete)
+1. Phase 6 complete — all 5 success criteria verified, 1042 tests passing
+2. Run `/gsd:plan-phase 7` to plan Phase 7 (Async Support)
+3. Phase 7 depends on Phase 6 (complete)
 
 ---
 *State initialized: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 5 complete (6/6 plans, 935 tests, all criteria verified)*
+*Last updated: 2026-02-09 after Phase 6 complete (5/5 plans, 1042 tests, all criteria verified)*
