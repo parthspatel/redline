@@ -1,0 +1,85 @@
+diff --git a/.planning/ROADMAP.md b/.planning/ROADMAP.md
+index 8355f3d..23f997e 100644
+--- a/.planning/ROADMAP.md
++++ b/.planning/ROADMAP.md
+@@ -295,6 +295,17 @@ Applied to every phase:
+ 4. Analyzer failure: if ReadabilityAnalyzer panics, remaining analyzers still produce results
+ 5. EditClassifier categorizes "fix typo" edit as Correction, "add paragraph" as Expansion
+ 
++**Plans:** 6 plans in 4 waves
++
++| Plan | Wave | Type | Description | Depends On |
++|------|------|------|-------------|------------|
++| 05-01 | 1 | execute | Core framework types: AnalyzerPlugin trait, error, annotation, context, report, module scaffold | -- |
++| 05-02 | 2 | execute | PluginRegistry with cycle detection + ExecutionPlanner with Kahn's toposort | 05-01 |
++| 05-03 | 2 | execute | SemanticAnalyzer (ScoringBackend, Jaccard heuristic) + StylisticAnalyzer (voice, tone, structure) | 05-01 |
++| 05-04 | 2 | execute | ReadabilityAnalyzer (MetricsEngine delta) + EditClassifier (7-category IntentCategory) | 05-01 |
++| 05-05 | 3 | execute | AnalysisCoordinator (catch_unwind, panic isolation) + register_builtin_analyzers | 05-01..04 |
++| 05-06 | 4 | execute | Integration tests verifying all 5 success criteria + final cleanup | 05-01..05 |
++
+ ---
+ 
+ ## Phase 6: Orchestration & Configuration
+diff --git a/.planning/STATE.md b/.planning/STATE.md
+index d3843f7..52e3c54 100644
+--- a/.planning/STATE.md
++++ b/.planning/STATE.md
+@@ -3,8 +3,8 @@
+ ## Current Status
+ 
+ **Milestone:** v1.0
+-**Current Phase:** Phase 4.1 (Realistic Test Fixtures) -- Complete
+-**Last Action:** Phase 4.1 executed (4 plans, 855 tests passing, all success criteria verified)
++**Current Phase:** Phase 5 (Analysis Framework) -- Planned
++**Last Action:** Phase 5 planned (6 plans in 4 waves, verification passed)
+ **Updated:** 2026-02-07
+ 
+ ## Project Reference
+@@ -12,7 +12,7 @@
+ See: `.planning/PROJECT.md` (updated 2026-02-05)
+ 
+ **Core value:** Extensible, correct text diff computation with a clean plugin story
+-**Current focus:** Phase 5 -- Analysis Framework (plan next)
++**Current focus:** Phase 5 -- Analysis Framework (execute next)
+ 
+ ## Progress
+ 
+@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
+ | 3 - Diff Computation | ✓ Complete | 5/5 |
+ | 4 - Metrics Engine | ✓ Complete | 8/8 |
+ | 4.1 - Realistic Test Fixtures | ✓ Complete | 4/4 |
+-| 5 - Analysis Framework | Pending | 0/? |
++| 5 - Analysis Framework | ◆ Planned | 0/6 |
+ | 6 - Orchestration & Config | Pending | 0/? |
+ | 7 - Async Support | Pending | 0/? |
+ | 8 - Python Bindings | Pending | 0/? |
+@@ -94,6 +94,14 @@ Progress: ██████░░░░ 55%
+ | Phase 4.1 Plan 02 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-02-PLAN.md` |
+ | Phase 4.1 Plan 03 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-03-PLAN.md` |
+ | Phase 4.1 Plan 04 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-04-PLAN.md` |
++| Phase 5 Context | Complete | `.planning/phases/05-analysis-framework/05-CONTEXT.md` |
++| Phase 5 Research | Complete | `.planning/phases/05-analysis-framework/05-RESEARCH.md` |
++| Phase 5 Plan 01 | ○ Planned | `.planning/phases/05-analysis-framework/05-01-PLAN.md` |
++| Phase 5 Plan 02 | ○ Planned | `.planning/phases/05-analysis-framework/05-02-PLAN.md` |
++| Phase 5 Plan 03 | ○ Planned | `.planning/phases/05-analysis-framework/05-03-PLAN.md` |
++| Phase 5 Plan 04 | ○ Planned | `.planning/phases/05-analysis-framework/05-04-PLAN.md` |
++| Phase 5 Plan 05 | ○ Planned | `.planning/phases/05-analysis-framework/05-05-PLAN.md` |
++| Phase 5 Plan 06 | ○ Planned | `.planning/phases/05-analysis-framework/05-06-PLAN.md` |
+ 
+ ## Key Decisions Log
+ 
+@@ -138,10 +146,10 @@ Progress: ██████░░░░ 55%
+ 
+ To continue work on this project:
+ 
+-1. Phase 4.1 complete — 855 tests passing, all success criteria verified
+-2. Run `/gsd:plan-phase 5` for Phase 5 (Analysis Framework)
+-3. Phase 5 depends on Phase 3 (DiffResult) and Phase 4 (metrics)
++1. Phase 5 planned — 6 plans in 4 waves, verification passed
++2. Run `/gsd:execute-phase 5` to execute Phase 5 (Analysis Framework)
++3. Wave 1: Core types (05-01) → Wave 2: Analyzers (05-02, 05-03, 05-04 parallel) → Wave 3: Coordinator (05-05) → Wave 4: Integration tests (05-06)
+ 
+ ---
+ *State initialized: 2026-02-06*
+-*Last updated: 2026-02-07 after Phase 4.1 execution complete (4 plans, 855 tests, verified)*
++*Last updated: 2026-02-07 after Phase 5 planning complete (6 plans, 4 waves, verified)*

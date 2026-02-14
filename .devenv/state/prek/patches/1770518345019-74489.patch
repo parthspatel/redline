@@ -1,0 +1,79 @@
+diff --git a/.planning/phases/04-metrics-engine/04-CONTEXT.md b/.planning/phases/04-metrics-engine/04-CONTEXT.md
+index 34c8264..7f73eff 100644
+--- a/.planning/phases/04-metrics-engine/04-CONTEXT.md
++++ b/.planning/phases/04-metrics-engine/04-CONTEXT.md
+@@ -25,6 +25,7 @@ Quantitative measurements of text properties and pairwise comparisons. Delivers:
+ - `dynamic_dependencies(input)` — additional dependencies discovered at compute time, validated on the fly with runtime cycle detection
+ - Full dependency set = union of static + dynamic
+ - Engine validates static graph upfront (catches cycles and missing IDs early), handles dynamic additions during compute
++- Metric authors must declare their dependency kind as "Static" or "Dynamic" — the registry uses this to route metrics into the appropriate validation path at registration time
+ 
+ ### Metric Organization & TDD Strategy
+ - One type per metric: `WordCountMetric`, `FleschKincaidMetric`, `JaccardSimilarityMetric`, etc. — each is its own struct implementing the `Metric` trait
+diff --git a/Cargo.lock b/Cargo.lock
+index 3e676c0..f229b38 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -220,6 +220,12 @@ version = "1.0.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
+ 
++[[package]]
++name = "equivalent"
++version = "1.0.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
++
+ [[package]]
+ name = "errno"
+ version = "0.3.14"
+@@ -242,6 +248,12 @@ version = "1.0.7"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+ 
++[[package]]
++name = "foldhash"
++version = "0.1.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
++
+ [[package]]
+ name = "foldhash"
+ version = "0.2.0"
+@@ -278,7 +290,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+ dependencies = [
+  "allocator-api2",
+- "foldhash",
++ "equivalent",
++ "foldhash 0.2.0",
+ ]
+ 
+ [[package]]
+@@ -363,6 +376,15 @@ version = "0.11.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
+ 
++[[package]]
++name = "lru"
++version = "0.16.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
++dependencies = [
++ "hashbrown",
++]
++
+ [[package]]
+ name = "memchr"
+ version = "2.8.0"
+@@ -624,8 +646,10 @@ version = "0.1.0"
+ dependencies = [
+  "bumpalo",
+  "criterion",
++ "foldhash 0.1.5",
+  "hashbrown",
+  "insta",
++ "lru",
+  "proptest",
+  "pyo3",
+  "serde",

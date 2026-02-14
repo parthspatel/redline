@@ -1,0 +1,112 @@
+diff --git a/.planning/STATE.md b/.planning/STATE.md
+index c9df41b..2563f33 100644
+--- a/.planning/STATE.md
++++ b/.planning/STATE.md
+@@ -23,6 +23,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
+ | 2.1 - Test Coverage & Simulation | ✓ Complete | 5/5 |
+ | 3 - Diff Computation | ✓ Complete | 5/5 |
+ | 4 - Metrics Engine | ✓ Complete | 8/8 |
++| 4.1 - Realistic Test Fixtures | Planned | 0/? |
+ | 5 - Analysis Framework | Pending | 0/? |
+ | 6 - Orchestration & Config | Pending | 0/? |
+ | 7 - Async Support | Pending | 0/? |
+@@ -124,14 +125,18 @@ Progress: █████░░░░░ 50%
+ - Phase 2.1 inserted after Phase 2: Test Coverage Enhancement & Deterministic Simulation Testing (URGENT)
+   - Reason: Harden Phase 1+2 code before building diff computation on top
+   - Status: ✓ Complete (2026-02-07)
++- Phase 4.1 inserted after Phase 4: Realistic Test Fixtures (URGENT)
++  - Reason: Replace synthetic test data with real-world phrases, sentences, and paragraphs across all modules
++  - Status: Planned
+ 
+ ## Context for Next Session
+ 
+ To continue work on this project:
+ 
+ 1. Phase 4 complete — 37 metrics, 831 tests passing
+-2. Run `/gsd:plan-phase 5` to plan Phase 5 (Analysis Framework)
+-3. Phase 5 builds on metrics engine: analyzers compose metrics into higher-level analysis reports
++2. Phase 4.1 inserted — Realistic Test Fixtures (improve tests with real-world text)
++3. Run `/gsd:plan-phase 4.1` to plan Phase 4.1
++4. After 4.1, run `/gsd:plan-phase 5` for Phase 5 (Analysis Framework)
+ 
+ ---
+ *State initialized: 2026-02-06*
+diff --git a/.planning/phases/04-metrics-engine/04-CONTEXT.md b/.planning/phases/04-metrics-engine/04-CONTEXT.md
+index 34c8264..7f73eff 100644
+--- a/.planning/phases/04-metrics-engine/04-CONTEXT.md
++++ b/.planning/phases/04-metrics-engine/04-CONTEXT.md
+@@ -25,6 +25,7 @@ Quantitative measurements of text properties and pairwise comparisons. Delivers:
+ - `dynamic_dependencies(input)` — additional dependencies discovered at compute time, validated on the fly with runtime cycle detection
+ - Full dependency set = union of static + dynamic
+ - Engine validates static graph upfront (catches cycles and missing IDs early), handles dynamic additions during compute
++- Metric authors must declare their dependency kind as "Static" or "Dynamic" — the registry uses this to route metrics into the appropriate validation path at registration time
+ 
+ ### Metric Organization & TDD Strategy
+ - One type per metric: `WordCountMetric`, `FleschKincaidMetric`, `JaccardSimilarityMetric`, etc. — each is its own struct implementing the `Metric` trait
+diff --git a/Cargo.lock b/Cargo.lock
+index 3e676c0..f229b38 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -220,6 +220,12 @@ version = "1.0.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
+ 
++[[package]]
++name = "equivalent"
++version = "1.0.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
++
+ [[package]]
+ name = "errno"
+ version = "0.3.14"
+@@ -242,6 +248,12 @@ version = "1.0.7"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+ 
++[[package]]
++name = "foldhash"
++version = "0.1.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
++
+ [[package]]
+ name = "foldhash"
+ version = "0.2.0"
+@@ -278,7 +290,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+ dependencies = [
+  "allocator-api2",
+- "foldhash",
++ "equivalent",
++ "foldhash 0.2.0",
+ ]
+ 
+ [[package]]
+@@ -363,6 +376,15 @@ version = "0.11.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
+ 
++[[package]]
++name = "lru"
++version = "0.16.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
++dependencies = [
++ "hashbrown",
++]
++
+ [[package]]
+ name = "memchr"
+ version = "2.8.0"
+@@ -624,8 +646,10 @@ version = "0.1.0"
+ dependencies = [
+  "bumpalo",
+  "criterion",
++ "foldhash 0.1.5",
+  "hashbrown",
+  "insta",
++ "lru",
+  "proptest",
+  "pyo3",
+  "serde",

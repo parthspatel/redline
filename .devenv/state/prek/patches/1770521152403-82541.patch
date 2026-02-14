@@ -1,0 +1,505 @@
+diff --git a/.planning/phases/04-metrics-engine/04-CONTEXT.md b/.planning/phases/04-metrics-engine/04-CONTEXT.md
+index 34c8264..7f73eff 100644
+--- a/.planning/phases/04-metrics-engine/04-CONTEXT.md
++++ b/.planning/phases/04-metrics-engine/04-CONTEXT.md
+@@ -25,6 +25,7 @@ Quantitative measurements of text properties and pairwise comparisons. Delivers:
+ - `dynamic_dependencies(input)` — additional dependencies discovered at compute time, validated on the fly with runtime cycle detection
+ - Full dependency set = union of static + dynamic
+ - Engine validates static graph upfront (catches cycles and missing IDs early), handles dynamic additions during compute
++- Metric authors must declare their dependency kind as "Static" or "Dynamic" — the registry uses this to route metrics into the appropriate validation path at registration time
+ 
+ ### Metric Organization & TDD Strategy
+ - One type per metric: `WordCountMetric`, `FleschKincaidMetric`, `JaccardSimilarityMetric`, etc. — each is its own struct implementing the `Metric` trait
+diff --git a/Cargo.lock b/Cargo.lock
+index 3e676c0..f229b38 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -220,6 +220,12 @@ version = "1.0.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
+ 
++[[package]]
++name = "equivalent"
++version = "1.0.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
++
+ [[package]]
+ name = "errno"
+ version = "0.3.14"
+@@ -242,6 +248,12 @@ version = "1.0.7"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+ 
++[[package]]
++name = "foldhash"
++version = "0.1.5"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
++
+ [[package]]
+ name = "foldhash"
+ version = "0.2.0"
+@@ -278,7 +290,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+ dependencies = [
+  "allocator-api2",
+- "foldhash",
++ "equivalent",
++ "foldhash 0.2.0",
+ ]
+ 
+ [[package]]
+@@ -363,6 +376,15 @@ version = "0.11.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
+ 
++[[package]]
++name = "lru"
++version = "0.16.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
++dependencies = [
++ "hashbrown",
++]
++
+ [[package]]
+ name = "memchr"
+ version = "2.8.0"
+@@ -624,8 +646,10 @@ version = "0.1.0"
+ dependencies = [
+  "bumpalo",
+  "criterion",
++ "foldhash 0.1.5",
+  "hashbrown",
+  "insta",
++ "lru",
+  "proptest",
+  "pyo3",
+  "serde",
+diff --git a/crates/core/tests/diff_integration.rs b/crates/core/tests/diff_integration.rs
+index 93b4432..f90f5d7 100644
+--- a/crates/core/tests/diff_integration.rs
++++ b/crates/core/tests/diff_integration.rs
+@@ -1,5 +1,7 @@
+ //! Integration tests for diff pipeline: known outputs, DiffComputer, statistics, performance safety.
+ 
++mod common;
++
+ use std::collections::HashMap;
+ use std::ops::ControlFlow;
+ use std::sync::Arc;
+@@ -8,14 +10,10 @@ use redline_core::diff::{
+     DiffAlgorithm, DiffComputer, DiffError, EditKind, Histogram, Myers, apply_operations,
+ };
+ use redline_core::process::ProcessedText;
+-use redline_core::tokenize::WordTokenizer;
+-use redline_core::{ExecutionMode, TextProcessor};
+ 
+ /// Helper to create ProcessedText from a string (no normalizers, WordTokenizer).
+ fn process_text(input: &str) -> Arc<ProcessedText> {
+-    let processor =
+-        TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All).unwrap();
+-    Arc::new(processor.process(input).unwrap())
++    common::process_arc(input)
+ }
+ 
+ // ---- Known-output correctness (success criteria 2, 3) ----
+@@ -266,3 +264,118 @@ fn is_approximate_flag() {
+         .unwrap();
+     assert!(output.is_approximate);
+ }
++
++// ---- Realistic diff pairs (Phase 4.1 fixtures) ----
++
++#[test]
++fn typo_correction_high_similarity() {
++    use common::diff_pairs::*;
++    let source = process_text(TYPO_BEFORE);
++    let target = process_text(TYPO_AFTER);
++    let result = DiffComputer::new().compute(source, target, None).unwrap();
++
++    assert!(
++        result.statistics.similarity_ratio > 0.8,
++        "Typo correction should have high similarity, got {}",
++        result.statistics.similarity_ratio
++    );
++    assert!(
++        result.statistics.replace_count >= 1,
++        "Should have at least 1 Replace for the typo fix"
++    );
++}
++
++#[test]
++fn typo_correction_histogram_matches_myers() {
++    use common::diff_pairs::*;
++    let source = process_text(TYPO_BEFORE);
++    let target = process_text(TYPO_AFTER);
++
++    let myers_result = DiffComputer::new()
++        .compute(source.clone(), target.clone(), None)
++        .unwrap();
++    let hist_result = DiffComputer::with_algorithm(Box::new(Histogram::new()))
++        .compute(source, target, None)
++        .unwrap();
++
++    assert_eq!(
++        myers_result.statistics.edit_distance, hist_result.statistics.edit_distance,
++        "Myers and Histogram should agree on edit distance for simple typo"
++    );
++}
++
++#[test]
++fn insertion_no_deletes() {
++    use common::diff_pairs::*;
++    let source = process_text(INSERT_BEFORE);
++    let target = process_text(INSERT_AFTER);
++    let result = DiffComputer::new().compute(source, target, None).unwrap();
++
++    assert_eq!(
++        result.statistics.delete_count, 0,
++        "Pure insertion should have zero deletes"
++    );
++    assert!(
++        result.statistics.insert_count > 0,
++        "Should have insert operations"
++    );
++    assert!(
++        result.statistics.equal_count > 0,
++        "Should preserve equal tokens"
++    );
++}
++
++#[test]
++fn rewrite_low_similarity() {
++    use common::diff_pairs::*;
++    let source = process_text(REWRITE_BEFORE);
++    let target = process_text(REWRITE_AFTER);
++    let result = DiffComputer::new().compute(source, target, None).unwrap();
++
++    assert!(
++        result.statistics.similarity_ratio < 0.5,
++        "Rewrite should have low similarity, got {}",
++        result.statistics.similarity_ratio
++    );
++}
++
++#[test]
++fn multi_paragraph_diff() {
++    let source = process_text(common::SIMPLE_PROSE);
++    let target = process_text(common::LITERARY_PROSE);
++    let result = DiffComputer::new().compute(source, target, None).unwrap();
++
++    // Different prose levels should have some commonality (function words) but mostly differ
++    assert!(result.statistics.edit_distance > 0);
++    assert!(
++        result.statistics.similarity_ratio < 0.8,
++        "Different prose styles should have moderate-to-low similarity"
++    );
++}
++
++#[test]
++fn technical_prose_roundtrip() {
++    let source = process_text(common::TECHNICAL_PROSE);
++    let target = process_text(common::TECHNICAL_PROSE);
++    let result = DiffComputer::new().compute(source, target, None).unwrap();
++
++    assert!(
++        (result.statistics.similarity_ratio - 1.0).abs() < f64::EPSILON,
++        "Identical technical prose should have similarity 1.0"
++    );
++    assert_eq!(result.statistics.edit_distance, 0);
++}
++
++#[test]
++fn realistic_hunks() {
++    use common::diff_pairs::*;
++    let source = process_text(INSERT_BEFORE);
++    let target = process_text(INSERT_AFTER);
++    let result = DiffComputer::new().compute(source, target, None).unwrap();
++
++    let hunks = result.hunks(1);
++    assert!(
++        !hunks.is_empty(),
++        "Insertion diff should produce at least one hunk"
++    );
++}
+diff --git a/crates/core/tests/metrics_engine.rs b/crates/core/tests/metrics_engine.rs
+index c24d375..54193ec 100644
+--- a/crates/core/tests/metrics_engine.rs
++++ b/crates/core/tests/metrics_engine.rs
+@@ -1,10 +1,10 @@
+ //! Integration tests for the metrics engine with count metrics.
+ 
+-use redline_core::TextProcessor;
++mod common;
++
+ use redline_core::metrics::counts::*;
+ use redline_core::metrics::{MetricInput, MetricRegistry, MetricValue, MetricsEngine};
+ use redline_core::process::ProcessedText;
+-use redline_core::tokenize::WordTokenizer;
+ 
+ fn register_all_counts(reg: &mut MetricRegistry) {
+     reg.register(Box::new(WordCountMetric)).unwrap();
+@@ -22,13 +22,7 @@ fn register_all_counts(reg: &mut MetricRegistry) {
+ }
+ 
+ fn process_text(text: &str) -> ProcessedText {
+-    let processor = TextProcessor::new(
+-        vec![],
+-        Box::new(WordTokenizer),
+-        redline_core::ExecutionMode::All,
+-    )
+-    .unwrap();
+-    processor.process(text).unwrap()
++    common::process(text)
+ }
+ 
+ #[test]
+@@ -184,3 +178,53 @@ fn engine_unicode_text() {
+     let byte_val = engine.get("byte_count", &input);
+     assert!(byte_val.as_integer().unwrap() >= char_val.as_integer().unwrap());
+ }
++
++#[test]
++fn multi_paragraph_counts() {
++    let mut reg = MetricRegistry::new();
++    register_all_counts(&mut reg);
++
++    let engine = MetricsEngine::new(reg);
++    let text = process_text(common::MULTI_PARAGRAPH);
++    let input = MetricInput::Single(&text);
++
++    let para = engine.get("paragraph_count", &input).as_integer().unwrap();
++    assert_eq!(para, 2, "MULTI_PARAGRAPH has 2 paragraphs");
++
++    let words = engine.get("word_count", &input).as_integer().unwrap();
++    assert!(
++        words > 50,
++        "MULTI_PARAGRAPH should have >50 words, got {words}"
++    );
++
++    let sentences = engine.get("sentence_count", &input).as_integer().unwrap();
++    assert!(
++        sentences >= 4,
++        "MULTI_PARAGRAPH should have >=4 sentences, got {sentences}"
++    );
++}
++
++#[test]
++fn technical_prose_counts() {
++    let mut reg = MetricRegistry::new();
++    register_all_counts(&mut reg);
++
++    let engine = MetricsEngine::new(reg);
++    let text = process_text(common::TECHNICAL_PROSE);
++    let input = MetricInput::Single(&text);
++
++    let words = engine.get("word_count", &input).as_integer().unwrap();
++    assert!(
++        words > 20,
++        "TECHNICAL_PROSE should have >20 words, got {words}"
++    );
++
++    let punct = engine
++        .get("punctuation_count", &input)
++        .as_integer()
++        .unwrap();
++    assert!(
++        punct >= 2,
++        "TECHNICAL_PROSE should have >=2 punctuation marks, got {punct}"
++    );
++}
+diff --git a/crates/core/tests/metrics_integration.rs b/crates/core/tests/metrics_integration.rs
+index 21a03b9..ca9515e 100644
+--- a/crates/core/tests/metrics_integration.rs
++++ b/crates/core/tests/metrics_integration.rs
+@@ -1,20 +1,17 @@
+ //! Comprehensive integration tests for the full metrics engine.
+ 
++mod common;
++
+ use hashbrown::HashMap;
+ use redline_core::metrics::DependencyKind;
+ use redline_core::metrics::error::MetricError;
+ use redline_core::process::ProcessedText;
+-use redline_core::tokenize::WordTokenizer;
+ use redline_core::{
+-    ExecutionMode, Metric, MetricInput, MetricRegistry, MetricValue, MetricsEngine, TextProcessor,
+-    register_builtins,
++    Metric, MetricInput, MetricRegistry, MetricValue, MetricsEngine, register_builtins,
+ };
+ 
+ fn process(s: &str) -> ProcessedText {
+-    TextProcessor::new(vec![], Box::new(WordTokenizer), ExecutionMode::All)
+-        .unwrap()
+-        .process(s)
+-        .unwrap()
++    common::process(s)
+ }
+ 
+ const SINGLE_METRIC_IDS: &[&str] = &[
+@@ -374,6 +371,163 @@ fn missing_dependency_validation_error() {
+     assert!(reg.validate().is_err());
+ }
+ 
++// ── Readability Ordering (Phase 4.1 realistic fixtures) ─────────────
++
++#[test]
++fn flesch_reading_ease_ordering() {
++    let mut reg = MetricRegistry::new();
++    register_builtins(&mut reg).unwrap();
++    let engine = MetricsEngine::new(reg);
++
++    let simple = process(common::SIMPLE_PROSE);
++    let literary = process(common::LITERARY_PROSE);
++    let technical = process(common::TECHNICAL_PROSE);
++    let academic = process(common::ACADEMIC_PROSE);
++
++    let fre_simple = engine
++        .get("flesch_reading_ease", &MetricInput::Single(&simple))
++        .as_float()
++        .unwrap();
++    let fre_literary = engine
++        .get("flesch_reading_ease", &MetricInput::Single(&literary))
++        .as_float()
++        .unwrap();
++    let fre_technical = engine
++        .get("flesch_reading_ease", &MetricInput::Single(&technical))
++        .as_float()
++        .unwrap();
++    let fre_academic = engine
++        .get("flesch_reading_ease", &MetricInput::Single(&academic))
++        .as_float()
++        .unwrap();
++
++    // Simple > Literary > Technical > Academic (easier text = higher FRE)
++    assert!(
++        fre_simple > fre_literary,
++        "SIMPLE ({fre_simple}) should be easier than LITERARY ({fre_literary})"
++    );
++    assert!(
++        fre_literary > fre_technical,
++        "LITERARY ({fre_literary}) should be easier than TECHNICAL ({fre_technical})"
++    );
++    assert!(
++        fre_technical > fre_academic,
++        "TECHNICAL ({fre_technical}) should be easier than ACADEMIC ({fre_academic})"
++    );
++}
++
++#[test]
++fn gunning_fog_ordering() {
++    let mut reg = MetricRegistry::new();
++    register_builtins(&mut reg).unwrap();
++    let engine = MetricsEngine::new(reg);
++
++    let simple = process(common::SIMPLE_PROSE);
++    let academic = process(common::ACADEMIC_PROSE);
++
++    let fog_simple = engine
++        .get("gunning_fog", &MetricInput::Single(&simple))
++        .as_float()
++        .unwrap();
++    let fog_academic = engine
++        .get("gunning_fog", &MetricInput::Single(&academic))
++        .as_float()
++        .unwrap();
++
++    // Academic should have higher Fog index (harder to read)
++    assert!(
++        fog_academic > fog_simple,
++        "ACADEMIC fog ({fog_academic}) should be higher than SIMPLE fog ({fog_simple})"
++    );
++}
++
++// ── Pairwise Metrics with Realistic Pairs ───────────────────────────
++
++#[test]
++fn typo_correction_high_similarity_metrics() {
++    use common::diff_pairs::*;
++    let mut reg = MetricRegistry::new();
++    register_builtins(&mut reg).unwrap();
++    let engine = MetricsEngine::new(reg);
++
++    let source = process(TYPO_BEFORE);
++    let target = process(TYPO_AFTER);
++    let input = MetricInput::Pairwise(&source, &target);
++
++    let jaccard = engine.get("jaccard_similarity", &input).as_float().unwrap();
++    assert!(
++        jaccard > 0.7,
++        "Typo correction should have high Jaccard similarity, got {jaccard}"
++    );
++
++    let cosine = engine.get("cosine_similarity", &input).as_float().unwrap();
++    assert!(
++        cosine > 0.7,
++        "Typo correction should have high cosine similarity, got {cosine}"
++    );
++
++    let lev = engine
++        .get("levenshtein_distance", &input)
++        .as_integer()
++        .unwrap();
++    assert!(
++        lev <= 3,
++        "Typo correction should have small Levenshtein distance, got {lev}"
++    );
++}
++
++#[test]
++fn rewrite_low_similarity_metrics() {
++    use common::diff_pairs::*;
++    let mut reg = MetricRegistry::new();
++    register_builtins(&mut reg).unwrap();
++    let engine = MetricsEngine::new(reg);
++
++    let source = process(REWRITE_BEFORE);
++    let target = process(REWRITE_AFTER);
++    let input = MetricInput::Pairwise(&source, &target);
++
++    let jaccard = engine.get("jaccard_similarity", &input).as_float().unwrap();
++    assert!(
++        jaccard < 0.5,
++        "Rewrite should have low Jaccard similarity, got {jaccard}"
++    );
++}
++
++#[test]
++fn readability_delta_between_prose_levels() {
++    let mut reg = MetricRegistry::new();
++    register_builtins(&mut reg).unwrap();
++    let engine = MetricsEngine::new(reg);
++
++    let simple = process(common::SIMPLE_PROSE);
++    let academic = process(common::ACADEMIC_PROSE);
++    let input = MetricInput::Pairwise(&simple, &academic);
++
++    let delta = engine.get("readability_delta", &input).as_float().unwrap();
++    // Should be a large positive delta (simple has higher FRE than academic)
++    assert!(
++        delta.abs() > 20.0,
++        "Readability delta between SIMPLE and ACADEMIC should be large, got {delta}"
++    );
++}
++
++#[test]
++fn multilang_pairwise_no_panic() {
++    let mut reg = MetricRegistry::new();
++    register_builtins(&mut reg).unwrap();
++    let engine = MetricsEngine::new(reg);
++
++    let cjk = process(common::multilang::CJK);
++    let arabic = process(common::multilang::ARABIC_PARAGRAPH);
++    let input = MetricInput::Pairwise(&cjk, &arabic);
++
++    // Just ensure no panics on cross-script pairwise comparison
++    for id in PAIRWISE_METRIC_IDS {
++        let _ = engine.get(id, &input);
++    }
++}
++
+ // ── Property Tests ──────────────────────────────────────────────────
+ 
+ #[cfg(test)]

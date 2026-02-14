@@ -1,0 +1,1637 @@
+diff --git a/.planning/ROADMAP.md b/.planning/ROADMAP.md
+index 8355f3d..23f997e 100644
+--- a/.planning/ROADMAP.md
++++ b/.planning/ROADMAP.md
+@@ -295,6 +295,17 @@ Applied to every phase:
+ 4. Analyzer failure: if ReadabilityAnalyzer panics, remaining analyzers still produce results
+ 5. EditClassifier categorizes "fix typo" edit as Correction, "add paragraph" as Expansion
+ 
++**Plans:** 6 plans in 4 waves
++
++| Plan | Wave | Type | Description | Depends On |
++|------|------|------|-------------|------------|
++| 05-01 | 1 | execute | Core framework types: AnalyzerPlugin trait, error, annotation, context, report, module scaffold | -- |
++| 05-02 | 2 | execute | PluginRegistry with cycle detection + ExecutionPlanner with Kahn's toposort | 05-01 |
++| 05-03 | 2 | execute | SemanticAnalyzer (ScoringBackend, Jaccard heuristic) + StylisticAnalyzer (voice, tone, structure) | 05-01 |
++| 05-04 | 2 | execute | ReadabilityAnalyzer (MetricsEngine delta) + EditClassifier (7-category IntentCategory) | 05-01 |
++| 05-05 | 3 | execute | AnalysisCoordinator (catch_unwind, panic isolation) + register_builtin_analyzers | 05-01..04 |
++| 05-06 | 4 | execute | Integration tests verifying all 5 success criteria + final cleanup | 05-01..05 |
++
+ ---
+ 
+ ## Phase 6: Orchestration & Configuration
+diff --git a/.planning/STATE.md b/.planning/STATE.md
+index d3843f7..52e3c54 100644
+--- a/.planning/STATE.md
++++ b/.planning/STATE.md
+@@ -3,8 +3,8 @@
+ ## Current Status
+ 
+ **Milestone:** v1.0
+-**Current Phase:** Phase 4.1 (Realistic Test Fixtures) -- Complete
+-**Last Action:** Phase 4.1 executed (4 plans, 855 tests passing, all success criteria verified)
++**Current Phase:** Phase 5 (Analysis Framework) -- Planned
++**Last Action:** Phase 5 planned (6 plans in 4 waves, verification passed)
+ **Updated:** 2026-02-07
+ 
+ ## Project Reference
+@@ -12,7 +12,7 @@
+ See: `.planning/PROJECT.md` (updated 2026-02-05)
+ 
+ **Core value:** Extensible, correct text diff computation with a clean plugin story
+-**Current focus:** Phase 5 -- Analysis Framework (plan next)
++**Current focus:** Phase 5 -- Analysis Framework (execute next)
+ 
+ ## Progress
+ 
+@@ -24,7 +24,7 @@ See: `.planning/PROJECT.md` (updated 2026-02-05)
+ | 3 - Diff Computation | ✓ Complete | 5/5 |
+ | 4 - Metrics Engine | ✓ Complete | 8/8 |
+ | 4.1 - Realistic Test Fixtures | ✓ Complete | 4/4 |
+-| 5 - Analysis Framework | Pending | 0/? |
++| 5 - Analysis Framework | ◆ Planned | 0/6 |
+ | 6 - Orchestration & Config | Pending | 0/? |
+ | 7 - Async Support | Pending | 0/? |
+ | 8 - Python Bindings | Pending | 0/? |
+@@ -94,6 +94,14 @@ Progress: ██████░░░░ 55%
+ | Phase 4.1 Plan 02 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-02-PLAN.md` |
+ | Phase 4.1 Plan 03 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-03-PLAN.md` |
+ | Phase 4.1 Plan 04 | ✓ Executed | `.planning/phases/04.1-realistic-test-fixtures/04.1-04-PLAN.md` |
++| Phase 5 Context | Complete | `.planning/phases/05-analysis-framework/05-CONTEXT.md` |
++| Phase 5 Research | Complete | `.planning/phases/05-analysis-framework/05-RESEARCH.md` |
++| Phase 5 Plan 01 | ○ Planned | `.planning/phases/05-analysis-framework/05-01-PLAN.md` |
++| Phase 5 Plan 02 | ○ Planned | `.planning/phases/05-analysis-framework/05-02-PLAN.md` |
++| Phase 5 Plan 03 | ○ Planned | `.planning/phases/05-analysis-framework/05-03-PLAN.md` |
++| Phase 5 Plan 04 | ○ Planned | `.planning/phases/05-analysis-framework/05-04-PLAN.md` |
++| Phase 5 Plan 05 | ○ Planned | `.planning/phases/05-analysis-framework/05-05-PLAN.md` |
++| Phase 5 Plan 06 | ○ Planned | `.planning/phases/05-analysis-framework/05-06-PLAN.md` |
+ 
+ ## Key Decisions Log
+ 
+@@ -138,10 +146,10 @@ Progress: ██████░░░░ 55%
+ 
+ To continue work on this project:
+ 
+-1. Phase 4.1 complete — 855 tests passing, all success criteria verified
+-2. Run `/gsd:plan-phase 5` for Phase 5 (Analysis Framework)
+-3. Phase 5 depends on Phase 3 (DiffResult) and Phase 4 (metrics)
++1. Phase 5 planned — 6 plans in 4 waves, verification passed
++2. Run `/gsd:execute-phase 5` to execute Phase 5 (Analysis Framework)
++3. Wave 1: Core types (05-01) → Wave 2: Analyzers (05-02, 05-03, 05-04 parallel) → Wave 3: Coordinator (05-05) → Wave 4: Integration tests (05-06)
+ 
+ ---
+ *State initialized: 2026-02-06*
+-*Last updated: 2026-02-07 after Phase 4.1 execution complete (4 plans, 855 tests, verified)*
++*Last updated: 2026-02-07 after Phase 5 planning complete (6 plans, 4 waves, verified)*
+diff --git a/crates/core/src/analysis/builtins/edit_classifier.rs b/crates/core/src/analysis/builtins/edit_classifier.rs
+index 5ac4996..c0bafc2 100644
+--- a/crates/core/src/analysis/builtins/edit_classifier.rs
++++ b/crates/core/src/analysis/builtins/edit_classifier.rs
+@@ -1,6 +1,18 @@
+ //! EditClassifier: 7-category intent taxonomy with ranked confidence scores.
+ //!
+-//! Full implementation in plan 05-04.
++//! Each operation gets all 7 categories with confidence, sorted descending.
++//! Adjacent operations are grouped for group-level classification.
++
++use core::any::Any;
++
++#[cfg(not(feature = "std"))]
++use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
++
++use crate::analysis::{
++    AnalysisContext, AnalysisError, AnalysisReport, AnalyzerDependency, AnalyzerMeta,
++    AnalyzerPlugin,
++};
++use crate::diff::edit_operation::EditKind;
+ 
+ /// The 7 intent categories for classifying edit operations.
+ ///
+@@ -24,6 +36,550 @@ pub enum IntentCategory {
+     Other,
+ }
+ 
++impl IntentCategory {
++    /// All 7 intent categories.
++    pub fn all() -> &'static [IntentCategory] {
++        &[
++            Self::Correction,
++            Self::Expansion,
++            Self::Deletion,
++            Self::Rewrite,
++            Self::Refinement,
++            Self::Formatting,
++            Self::Other,
++        ]
++    }
++}
++
++/// Classification of a single operation with all 7 categories ranked.
++#[derive(Debug, Clone)]
++pub struct OperationClassification {
++    /// Index of the operation in the diff.
++    pub operation_index: usize,
++    /// All 7 categories sorted by confidence descending.
++    pub categories: Vec<(IntentCategory, f64)>,
++}
++
++/// Classification of a group of adjacent operations.
++#[derive(Debug, Clone)]
++pub struct GroupClassification {
++    /// Indices of operations in this group.
++    pub operation_indices: Vec<usize>,
++    /// Aggregated categories sorted by confidence descending.
++    pub categories: Vec<(IntentCategory, f64)>,
++}
++
+ /// Result of edit classification analysis.
+ #[derive(Debug, Clone)]
+-pub struct EditClassifierResult;
++pub struct EditClassifierResult {
++    /// Per-operation classifications.
++    pub operations: Vec<OperationClassification>,
++    /// Group-level classifications for adjacent operations.
++    pub groups: Vec<GroupClassification>,
++}
++
++/// Configurable thresholds for the edit classifier.
++#[derive(Debug, Clone)]
++pub struct EditClassifierConfig {
++    /// Maximum edit distance to classify as typo correction.
++    pub typo_max_edit_distance: usize,
++    /// Maximum length ratio (target/source) to classify as typo correction.
++    pub typo_max_length_ratio: f64,
++    /// Minimum length ratio (target/source) to classify as expansion.
++    pub expansion_length_ratio: f64,
++    /// Maximum length ratio (target/source) to classify as deletion-like.
++    pub deletion_length_ratio: f64,
++    /// Whether formatting detection only considers whitespace changes.
++    pub formatting_only_whitespace: bool,
++    /// Maximum Equal-operation gap to bridge when grouping adjacent changes.
++    pub group_gap_threshold: usize,
++}
++
++impl Default for EditClassifierConfig {
++    fn default() -> Self {
++        Self {
++            typo_max_edit_distance: 2,
++            typo_max_length_ratio: 1.3,
++            expansion_length_ratio: 1.5,
++            deletion_length_ratio: 0.5,
++            formatting_only_whitespace: true,
++            group_gap_threshold: 2,
++        }
++    }
++}
++
++// ── Helpers ───────────────────────────────────────────────────
++
++/// Simple Levenshtein edit distance with early bail-out.
++fn simple_edit_distance(a: &str, b: &str) -> usize {
++    let a_chars: Vec<char> = a.chars().collect();
++    let b_chars: Vec<char> = b.chars().collect();
++    let m = a_chars.len();
++    let n = b_chars.len();
++
++    // Early bail-out for large length differences
++    if m.abs_diff(n) > m.max(n) / 2 + 1 {
++        return m.max(n);
++    }
++
++    let mut prev: Vec<usize> = (0..=n).collect();
++    let mut curr = vec![0; n + 1];
++
++    for i in 1..=m {
++        curr[0] = i;
++        for j in 1..=n {
++            let cost = if a_chars[i - 1] == b_chars[j - 1] {
++                0
++            } else {
++                1
++            };
++            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
++        }
++        core::mem::swap(&mut prev, &mut curr);
++    }
++
++    prev[n]
++}
++
++/// Returns true if the change is whitespace/punctuation only.
++fn is_formatting_only(source: &str, target: &str) -> bool {
++    let strip = |s: &str| -> String {
++        s.chars()
++            .filter(|c| !c.is_whitespace() && !c.is_ascii_punctuation())
++            .collect()
++    };
++    strip(source) == strip(target)
++}
++
++/// Classify a single operation into all 7 categories with confidence.
++///
++/// Returns all 7 categories with baseline minimum 0.01, normalized to sum ~1.0,
++/// sorted by confidence descending.
++fn classify_operation(
++    kind: EditKind,
++    source_text: &str,
++    target_text: &str,
++    config: &EditClassifierConfig,
++) -> Vec<(IntentCategory, f64)> {
++    let mut scores = [0.0f64; 7]; // indexed by category order in all()
++
++    match kind {
++        EditKind::Insert => {
++            scores[1] = 0.80; // Expansion
++            scores[6] = 0.05; // Other
++            scores[5] = 0.03; // Formatting
++            scores[4] = 0.02; // Refinement
++        }
++        EditKind::Delete => {
++            scores[2] = 0.80; // Deletion
++            scores[6] = 0.05; // Other
++            scores[4] = 0.03; // Refinement
++            scores[5] = 0.02; // Formatting
++        }
++        EditKind::Replace => {
++            if is_formatting_only(source_text, target_text) {
++                scores[5] = 0.90; // Formatting
++            } else {
++                let source_len = source_text.len();
++                let target_len = target_text.len();
++                let edit_dist = simple_edit_distance(source_text, target_text);
++
++                let len_ratio = if source_len > 0 {
++                    target_len as f64 / source_len as f64
++                } else {
++                    f64::MAX
++                };
++
++                // Typo/correction detection
++                if edit_dist <= config.typo_max_edit_distance
++                    && len_ratio <= config.typo_max_length_ratio
++                {
++                    scores[0] = 0.85; // Correction
++                    scores[4] = 0.05; // Refinement
++                }
++                // Expansion detection
++                else if len_ratio > config.expansion_length_ratio {
++                    scores[1] = 0.60; // Expansion
++                    scores[3] = 0.15; // Rewrite
++                    scores[4] = 0.10; // Refinement
++                }
++                // Deletion-like shrink
++                else if len_ratio < config.deletion_length_ratio {
++                    scores[2] = 0.40; // Deletion
++                    scores[4] = 0.30; // Refinement
++                    scores[3] = 0.10; // Rewrite
++                }
++                // Default: refinement or rewrite
++                else {
++                    let similarity = 1.0
++                        - (edit_dist as f64 / source_len.max(target_len).max(1) as f64).min(1.0);
++                    if similarity > 0.6 {
++                        scores[4] = 0.55; // Refinement
++                        scores[3] = 0.20; // Rewrite
++                        scores[0] = 0.10; // Correction
++                    } else {
++                        scores[3] = 0.55; // Rewrite
++                        scores[4] = 0.20; // Refinement
++                        scores[1] = 0.05; // Expansion
++                    }
++                }
++            }
++        }
++        EditKind::Equal => {
++            scores[6] = 0.90; // Other (shouldn't be classified)
++        }
++    }
++
++    // Apply baseline minimum and normalize
++    let categories = IntentCategory::all();
++    let mut result: Vec<(IntentCategory, f64)> = categories
++        .iter()
++        .zip(scores.iter())
++        .map(|(&cat, &score)| (cat, score.max(0.01)))
++        .collect();
++
++    let total: f64 = result.iter().map(|(_, s)| s).sum();
++    if total > 0.0 {
++        for item in &mut result {
++            item.1 /= total;
++        }
++    }
++
++    // Sort descending by confidence
++    result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(core::cmp::Ordering::Equal));
++    result
++}
++
++/// Group adjacent non-Equal operations, bridging small Equal gaps.
++fn group_adjacent_operations(
++    operations: &[crate::diff::EditOperation],
++    gap_threshold: usize,
++) -> Vec<Vec<usize>> {
++    let mut groups: Vec<Vec<usize>> = Vec::new();
++    let mut current_group: Vec<usize> = Vec::new();
++    let mut gap = 0usize;
++
++    for (i, op) in operations.iter().enumerate() {
++        if op.kind != EditKind::Equal {
++            if !current_group.is_empty() && gap > gap_threshold {
++                groups.push(core::mem::take(&mut current_group));
++            }
++            current_group.push(i);
++            gap = 0;
++        } else if !current_group.is_empty() {
++            gap += 1;
++        }
++    }
++
++    if !current_group.is_empty() {
++        groups.push(current_group);
++    }
++
++    groups
++}
++
++/// Classify a group by averaging per-operation classifications.
++fn classify_group(
++    group_indices: &[usize],
++    op_classifications: &[OperationClassification],
++) -> Vec<(IntentCategory, f64)> {
++    let categories = IntentCategory::all();
++    let mut sums = [0.0f64; 7];
++    let mut count = 0usize;
++
++    for &idx in group_indices {
++        if let Some(op_class) = op_classifications.iter().find(|c| c.operation_index == idx) {
++            for &(cat, conf) in &op_class.categories {
++                let pos = categories.iter().position(|&c| c == cat).unwrap_or(6);
++                sums[pos] += conf;
++            }
++            count += 1;
++        }
++    }
++
++    if count > 0 {
++        for s in &mut sums {
++            *s /= count as f64;
++        }
++    }
++
++    let mut result: Vec<(IntentCategory, f64)> = categories
++        .iter()
++        .zip(sums.iter())
++        .map(|(&cat, &avg)| (cat, avg))
++        .collect();
++
++    result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(core::cmp::Ordering::Equal));
++    result
++}
++
++// ── Analyzer ──────────────────────────────────────────────────
++
++/// Edit classifier with configurable thresholds.
++pub struct EditClassifier {
++    config: EditClassifierConfig,
++}
++
++impl EditClassifier {
++    /// Create with default configuration.
++    pub fn new() -> Self {
++        Self {
++            config: EditClassifierConfig::default(),
++        }
++    }
++
++    /// Create with custom configuration.
++    pub fn with_config(config: EditClassifierConfig) -> Self {
++        Self { config }
++    }
++}
++
++impl Default for EditClassifier {
++    fn default() -> Self {
++        Self::new()
++    }
++}
++
++impl AnalyzerPlugin for EditClassifier {
++    fn id(&self) -> &str {
++        "edit_classifier"
++    }
++
++    fn meta(&self) -> AnalyzerMeta {
++        AnalyzerMeta {
++            id: "edit_classifier".into(),
++            name: "Edit Classifier".into(),
++            version: "1.0.0".into(),
++        }
++    }
++
++    fn dependencies(&self) -> Vec<AnalyzerDependency> {
++        Vec::new()
++    }
++
++    fn cost(&self) -> f32 {
++        0.3
++    }
++
++    fn analyze(
++        &self,
++        context: &AnalysisContext,
++        _prior_results: &AnalysisReport,
++    ) -> Result<Box<dyn Any + Send + Sync>, AnalysisError> {
++        let changes = context.change_operations();
++
++        let operations: Vec<OperationClassification> = changes
++            .iter()
++            .map(|&(idx, op)| {
++                let source_text = context.source_text_for_op(idx).unwrap_or("");
++                let target_text = context.target_text_for_op(idx).unwrap_or("");
++                let categories =
++                    classify_operation(op.kind, source_text, target_text, &self.config);
++                OperationClassification {
++                    operation_index: idx,
++                    categories,
++                }
++            })
++            .collect();
++
++        let groups_indices =
++            group_adjacent_operations(&context.diff.operations, self.config.group_gap_threshold);
++
++        let groups: Vec<GroupClassification> = groups_indices
++            .into_iter()
++            .map(|group_indices| {
++                let categories = classify_group(&group_indices, &operations);
++                GroupClassification {
++                    operation_indices: group_indices,
++                    categories,
++                }
++            })
++            .collect();
++
++        Ok(Box::new(EditClassifierResult { operations, groups }))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn edit_distance_identical() {
++        assert_eq!(simple_edit_distance("hello", "hello"), 0);
++    }
++
++    #[test]
++    fn edit_distance_one_char() {
++        assert_eq!(simple_edit_distance("cat", "bat"), 1);
++    }
++
++    #[test]
++    fn edit_distance_substitution() {
++        assert_eq!(simple_edit_distance("kitten", "sitting"), 3);
++    }
++
++    #[test]
++    fn edit_distance_empty() {
++        assert_eq!(simple_edit_distance("", "abc"), 3);
++        assert_eq!(simple_edit_distance("abc", ""), 3);
++        assert_eq!(simple_edit_distance("", ""), 0);
++    }
++
++    #[test]
++    fn classify_insert_as_expansion() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(EditKind::Insert, "", "new content", &config);
++        assert_eq!(cats[0].0, IntentCategory::Expansion);
++    }
++
++    #[test]
++    fn classify_delete_as_deletion() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(EditKind::Delete, "removed content", "", &config);
++        assert_eq!(cats[0].0, IntentCategory::Deletion);
++    }
++
++    #[test]
++    fn classify_whitespace_replace_as_formatting() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(EditKind::Replace, "hello  world", "hello world", &config);
++        assert_eq!(cats[0].0, IntentCategory::Formatting);
++    }
++
++    #[test]
++    fn classify_typo_replace_as_correction() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(EditKind::Replace, "teh", "the", &config);
++        assert_eq!(cats[0].0, IntentCategory::Correction);
++    }
++
++    #[test]
++    fn classify_long_expansion_replace() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(
++            EditKind::Replace,
++            "short",
++            "a much longer replacement text here",
++            &config,
++        );
++        assert_eq!(cats[0].0, IntentCategory::Expansion);
++    }
++
++    #[test]
++    fn all_seven_categories_present() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(EditKind::Insert, "", "new text", &config);
++        assert_eq!(cats.len(), 7);
++        let unique: hashbrown::HashSet<_> = cats.iter().map(|(c, _)| *c).collect();
++        assert_eq!(unique.len(), 7);
++    }
++
++    #[test]
++    fn categories_sorted_descending() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(
++            EditKind::Replace,
++            "old text here",
++            "new text there",
++            &config,
++        );
++        for w in cats.windows(2) {
++            assert!(w[0].1 >= w[1].1, "not sorted: {:?} < {:?}", w[0], w[1]);
++        }
++    }
++
++    #[test]
++    fn categories_sum_to_one() {
++        let config = EditClassifierConfig::default();
++        let cats = classify_operation(EditKind::Replace, "hello", "world", &config);
++        let sum: f64 = cats.iter().map(|(_, c)| c).sum();
++        assert!((sum - 1.0).abs() < 0.01, "sum should be ~1.0, got {}", sum);
++    }
++
++    #[test]
++    fn intent_category_all_has_seven() {
++        assert_eq!(IntentCategory::all().len(), 7);
++    }
++
++    #[test]
++    fn group_adjacent_operations_basic() {
++        use crate::diff::EditOperation;
++        let ops = vec![
++            EditOperation::equal(0, 2, 0, 2),
++            EditOperation::replace(2, 4, 2, 5),
++            EditOperation::equal(4, 5, 5, 6),
++            EditOperation::delete(5, 7, 6),
++            EditOperation::equal(7, 10, 6, 9),
++        ];
++        let groups = group_adjacent_operations(&ops, 1);
++        assert_eq!(groups.len(), 1);
++        assert!(groups[0].contains(&1));
++        assert!(groups[0].contains(&3));
++    }
++
++    #[test]
++    fn classify_group_averages() {
++        let op_classes = vec![
++            OperationClassification {
++                operation_index: 1,
++                categories: IntentCategory::all()
++                    .iter()
++                    .map(|&c| {
++                        if c == IntentCategory::Correction {
++                            (c, 0.80)
++                        } else {
++                            (c, 0.033)
++                        }
++                    })
++                    .collect(),
++            },
++            OperationClassification {
++                operation_index: 3,
++                categories: IntentCategory::all()
++                    .iter()
++                    .map(|&c| {
++                        if c == IntentCategory::Expansion {
++                            (c, 0.80)
++                        } else {
++                            (c, 0.033)
++                        }
++                    })
++                    .collect(),
++            },
++        ];
++        let result = classify_group(&[1, 3], &op_classes);
++        // Both Correction and Expansion should have averaged to ~0.4
++        let correction = result
++            .iter()
++            .find(|(c, _)| *c == IntentCategory::Correction)
++            .unwrap()
++            .1;
++        let expansion = result
++            .iter()
++            .find(|(c, _)| *c == IntentCategory::Expansion)
++            .unwrap()
++            .1;
++        assert!((correction - expansion).abs() < 0.01);
++        assert!(correction > 0.3); // should be ~0.416
++    }
++
++    #[test]
++    fn edit_classifier_id() {
++        assert_eq!(EditClassifier::new().id(), "edit_classifier");
++    }
++
++    #[test]
++    fn edit_classifier_no_deps() {
++        assert!(EditClassifier::new().dependencies().is_empty());
++    }
++
++    #[test]
++    fn edit_classifier_default_config() {
++        let config = EditClassifierConfig::default();
++        assert_eq!(config.typo_max_edit_distance, 2);
++        assert!((config.typo_max_length_ratio - 1.3).abs() < f64::EPSILON);
++        assert!((config.expansion_length_ratio - 1.5).abs() < f64::EPSILON);
++        assert!((config.deletion_length_ratio - 0.5).abs() < f64::EPSILON);
++    }
++}
+diff --git a/crates/core/src/analysis/builtins/readability.rs b/crates/core/src/analysis/builtins/readability.rs
+index c286bd8..18aa66e 100644
+--- a/crates/core/src/analysis/builtins/readability.rs
++++ b/crates/core/src/analysis/builtins/readability.rs
+@@ -1,7 +1,309 @@
+ //! ReadabilityAnalyzer: document-level readability delta + per-region attribution.
+ //!
+-//! Full implementation in plan 05-04.
++//! Delegates to MetricsEngine for all score computation (does NOT re-implement formulas).
++
++use core::any::Any;
++
++#[cfg(not(feature = "std"))]
++use alloc::{boxed::Box, format, string::String, string::ToString, vec, vec::Vec};
++
++use crate::analysis::{
++    AnalysisContext, AnalysisError, AnalysisReport, AnalyzerDependency, AnalyzerMeta,
++    AnalyzerPlugin,
++};
++use crate::diff::edit_operation::EditKind;
++
++/// Readability scores from 6 standard metrics.
++#[derive(Debug, Clone)]
++pub struct ReadabilityScores {
++    pub flesch_reading_ease: f64,
++    pub flesch_kincaid_grade: f64,
++    pub gunning_fog: f64,
++    pub coleman_liau: f64,
++    pub ari: f64,
++    pub smog_index: f64,
++}
++
++/// Attribution of readability changes to specific edit regions.
++#[derive(Debug, Clone)]
++pub struct ReadabilityAttribution {
++    /// Operation indices in this region.
++    pub operation_indices: Vec<usize>,
++    /// Estimated impact on readability (proportional).
++    pub estimated_impact: f64,
++    /// Human-readable description.
++    pub description: String,
++}
+ 
+ /// Result of readability analysis.
+ #[derive(Debug, Clone)]
+-pub struct ReadabilityResult;
++pub struct ReadabilityResult {
++    pub source_scores: ReadabilityScores,
++    pub target_scores: ReadabilityScores,
++    pub delta: ReadabilityScores,
++    pub attributions: Vec<ReadabilityAttribution>,
++}
++
++// ── Helpers ───────────────────────────────────────────────────
++
++fn compute_scores(context: &AnalysisContext) -> (ReadabilityScores, ReadabilityScores) {
++    let get_source =
++        |id: &str| -> f64 { context.compute_source_metric(id).as_float().unwrap_or(0.0) };
++    let get_target =
++        |id: &str| -> f64 { context.compute_target_metric(id).as_float().unwrap_or(0.0) };
++
++    let source = ReadabilityScores {
++        flesch_reading_ease: get_source("flesch_reading_ease"),
++        flesch_kincaid_grade: get_source("flesch_kincaid_grade"),
++        gunning_fog: get_source("gunning_fog"),
++        coleman_liau: get_source("coleman_liau"),
++        ari: get_source("ari"),
++        smog_index: get_source("smog_index"),
++    };
++    let target = ReadabilityScores {
++        flesch_reading_ease: get_target("flesch_reading_ease"),
++        flesch_kincaid_grade: get_target("flesch_kincaid_grade"),
++        gunning_fog: get_target("gunning_fog"),
++        coleman_liau: get_target("coleman_liau"),
++        ari: get_target("ari"),
++        smog_index: get_target("smog_index"),
++    };
++    (source, target)
++}
++
++fn delta_scores(source: &ReadabilityScores, target: &ReadabilityScores) -> ReadabilityScores {
++    ReadabilityScores {
++        flesch_reading_ease: target.flesch_reading_ease - source.flesch_reading_ease,
++        flesch_kincaid_grade: target.flesch_kincaid_grade - source.flesch_kincaid_grade,
++        gunning_fog: target.gunning_fog - source.gunning_fog,
++        coleman_liau: target.coleman_liau - source.coleman_liau,
++        ari: target.ari - source.ari,
++        smog_index: target.smog_index - source.smog_index,
++    }
++}
++
++/// Group adjacent non-Equal operations, bridging small Equal gaps.
++///
++/// `gap_threshold` is the maximum number of Equal tokens between two
++/// non-Equal operations that should be merged into the same group.
++fn group_adjacent_operations(
++    operations: &[crate::diff::EditOperation],
++    gap_threshold: usize,
++) -> Vec<Vec<usize>> {
++    let mut groups: Vec<Vec<usize>> = Vec::new();
++    let mut current_group: Vec<usize> = Vec::new();
++    let mut gap = 0usize;
++
++    for (i, op) in operations.iter().enumerate() {
++        if op.kind != EditKind::Equal {
++            if !current_group.is_empty() && gap > gap_threshold {
++                groups.push(core::mem::take(&mut current_group));
++            }
++            current_group.push(i);
++            gap = 0;
++        } else if !current_group.is_empty() {
++            gap += 1;
++        }
++    }
++
++    if !current_group.is_empty() {
++        groups.push(current_group);
++    }
++
++    groups
++}
++
++// ── Analyzer ──────────────────────────────────────────────────
++
++/// Readability analyzer computing before/after readability scores via MetricsEngine.
++pub struct ReadabilityAnalyzer;
++
++impl AnalyzerPlugin for ReadabilityAnalyzer {
++    fn id(&self) -> &str {
++        "readability"
++    }
++
++    fn meta(&self) -> AnalyzerMeta {
++        AnalyzerMeta {
++            id: "readability".into(),
++            name: "Readability Analyzer".into(),
++            version: "1.0.0".into(),
++        }
++    }
++
++    fn dependencies(&self) -> Vec<AnalyzerDependency> {
++        Vec::new()
++    }
++
++    fn cost(&self) -> f32 {
++        0.5
++    }
++
++    fn analyze(
++        &self,
++        context: &AnalysisContext,
++        _prior_results: &AnalysisReport,
++    ) -> Result<Box<dyn Any + Send + Sync>, AnalysisError> {
++        let (source_scores, target_scores) = compute_scores(context);
++        let delta = delta_scores(&source_scores, &target_scores);
++
++        // Attribution: group adjacent operations and estimate impact
++        let groups = group_adjacent_operations(&context.diff.operations, 2);
++
++        // Total number of changed tokens for proportional impact
++        let total_changed_tokens: usize = groups
++            .iter()
++            .flat_map(|g| g.iter())
++            .map(|&i| {
++                let op = &context.diff.operations[i];
++                (op.source_len() + op.target_len()) as usize
++            })
++            .sum();
++
++        let abs_fre_delta = delta.flesch_reading_ease.abs();
++
++        let attributions = groups
++            .into_iter()
++            .map(|group_indices| {
++                let group_tokens: usize = group_indices
++                    .iter()
++                    .map(|&i| {
++                        let op = &context.diff.operations[i];
++                        (op.source_len() + op.target_len()) as usize
++                    })
++                    .sum();
++
++                let proportion = if total_changed_tokens > 0 {
++                    group_tokens as f64 / total_changed_tokens as f64
++                } else {
++                    0.0
++                };
++
++                let estimated_impact = proportion * abs_fre_delta;
++
++                ReadabilityAttribution {
++                    operation_indices: group_indices,
++                    estimated_impact,
++                    description: format!(
++                        "{} changed tokens ({:.0}% of changes)",
++                        group_tokens,
++                        proportion * 100.0
++                    ),
++                }
++            })
++            .collect();
++
++        Ok(Box::new(ReadabilityResult {
++            source_scores,
++            target_scores,
++            delta,
++            attributions,
++        }))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn delta_scores_computation() {
++        let source = ReadabilityScores {
++            flesch_reading_ease: 60.0,
++            flesch_kincaid_grade: 8.0,
++            gunning_fog: 10.0,
++            coleman_liau: 9.0,
++            ari: 7.0,
++            smog_index: 8.5,
++        };
++        let target = ReadabilityScores {
++            flesch_reading_ease: 70.0,
++            flesch_kincaid_grade: 6.0,
++            gunning_fog: 8.0,
++            coleman_liau: 7.5,
++            ari: 5.5,
++            smog_index: 7.0,
++        };
++        let d = delta_scores(&source, &target);
++        assert!((d.flesch_reading_ease - 10.0).abs() < f64::EPSILON);
++        assert!((d.flesch_kincaid_grade - (-2.0)).abs() < f64::EPSILON);
++        assert!((d.gunning_fog - (-2.0)).abs() < f64::EPSILON);
++        assert!((d.coleman_liau - (-1.5)).abs() < f64::EPSILON);
++        assert!((d.ari - (-1.5)).abs() < f64::EPSILON);
++        assert!((d.smog_index - (-1.5)).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn delta_scores_negative() {
++        let source = ReadabilityScores {
++            flesch_reading_ease: 80.0,
++            flesch_kincaid_grade: 5.0,
++            gunning_fog: 7.0,
++            coleman_liau: 6.0,
++            ari: 4.0,
++            smog_index: 5.5,
++        };
++        let target = ReadabilityScores {
++            flesch_reading_ease: 50.0,
++            flesch_kincaid_grade: 10.0,
++            gunning_fog: 12.0,
++            coleman_liau: 11.0,
++            ari: 9.0,
++            smog_index: 10.5,
++        };
++        let d = delta_scores(&source, &target);
++        assert!(d.flesch_reading_ease < 0.0);
++        assert!(d.flesch_kincaid_grade > 0.0);
++    }
++
++    #[test]
++    fn readability_analyzer_id() {
++        assert_eq!(ReadabilityAnalyzer.id(), "readability");
++    }
++
++    #[test]
++    fn readability_analyzer_no_analyzer_deps() {
++        assert!(ReadabilityAnalyzer.dependencies().is_empty());
++    }
++
++    #[test]
++    fn group_adjacent_operations_basic() {
++        use crate::diff::EditOperation;
++        let ops = vec![
++            EditOperation::equal(0, 2, 0, 2),
++            EditOperation::replace(2, 4, 2, 5),
++            EditOperation::equal(4, 5, 5, 6),
++            EditOperation::delete(5, 7, 6),
++            EditOperation::equal(7, 10, 6, 9),
++        ];
++        // gap_threshold=1: bridge the single Equal between Replace and Delete
++        let groups = group_adjacent_operations(&ops, 1);
++        assert_eq!(groups.len(), 1);
++        assert!(groups[0].contains(&1)); // Replace
++        assert!(groups[0].contains(&3)); // Delete
++    }
++
++    #[test]
++    fn group_adjacent_no_changes() {
++        use crate::diff::EditOperation;
++        let ops = vec![
++            EditOperation::equal(0, 5, 0, 5),
++            EditOperation::equal(5, 10, 5, 10),
++        ];
++        let groups = group_adjacent_operations(&ops, 2);
++        assert!(groups.is_empty());
++    }
++
++    #[test]
++    fn group_adjacent_single_change() {
++        use crate::diff::EditOperation;
++        let ops = vec![
++            EditOperation::equal(0, 3, 0, 3),
++            EditOperation::insert(3, 3, 5),
++            EditOperation::equal(3, 8, 5, 10),
++        ];
++        let groups = group_adjacent_operations(&ops, 2);
++        assert_eq!(groups.len(), 1);
++        assert_eq!(groups[0], vec![1]);
++    }
++}
+diff --git a/crates/core/src/analysis/builtins/semantic.rs b/crates/core/src/analysis/builtins/semantic.rs
+index 3344bcb..62e3627 100644
+--- a/crates/core/src/analysis/builtins/semantic.rs
++++ b/crates/core/src/analysis/builtins/semantic.rs
+@@ -1,7 +1,228 @@
+ //! SemanticAnalyzer: heuristic-based similarity scoring per edit operation.
+-//!
+-//! Full implementation in plan 05-03.
++
++use core::any::Any;
++
++#[cfg(not(feature = "std"))]
++use alloc::{boxed::Box, string::String, string::ToString, vec::Vec};
++
++use hashbrown::HashSet;
++
++use crate::analysis::{
++    AnalysisContext, AnalysisError, AnalysisReport, AnalyzerDependency, AnalyzerMeta,
++    AnalyzerPlugin,
++};
++use crate::diff::edit_operation::EditKind;
++
++/// Per-operation similarity score.
++#[derive(Debug, Clone)]
++pub struct OperationSimilarity {
++    pub operation_index: usize,
++    pub similarity: f64,
++    pub method: String,
++}
+ 
+ /// Result of semantic analysis.
+ #[derive(Debug, Clone)]
+-pub struct SemanticResult;
++pub struct SemanticResult {
++    pub operation_scores: Vec<OperationSimilarity>,
++    pub overall_similarity: f64,
++}
++
++/// Pluggable scoring backend (BERT-ready: exactly 2 methods).
++pub trait ScoringBackend: Send + Sync {
++    fn score(&self, source_tokens: &[&str], target_tokens: &[&str]) -> f64;
++    fn name(&self) -> &str;
++}
++
++/// Default heuristic backend using Jaccard similarity on token sets.
++pub struct HeuristicScoring;
++
++impl ScoringBackend for HeuristicScoring {
++    fn name(&self) -> &str {
++        "heuristic_jaccard"
++    }
++
++    fn score(&self, source_tokens: &[&str], target_tokens: &[&str]) -> f64 {
++        if source_tokens.is_empty() && target_tokens.is_empty() {
++            return 1.0;
++        }
++        if source_tokens.is_empty() || target_tokens.is_empty() {
++            return 0.0;
++        }
++        let a: HashSet<&str> = source_tokens.iter().copied().collect();
++        let b: HashSet<&str> = target_tokens.iter().copied().collect();
++        let intersection = a.intersection(&b).count();
++        let union = a.union(&b).count();
++        if union == 0 {
++            1.0
++        } else {
++            intersection as f64 / union as f64
++        }
++    }
++}
++
++/// Semantic analyzer scoring per-operation similarity.
++pub struct SemanticAnalyzer {
++    backend: Box<dyn ScoringBackend>,
++}
++
++impl SemanticAnalyzer {
++    pub fn new() -> Self {
++        Self {
++            backend: Box::new(HeuristicScoring),
++        }
++    }
++
++    pub fn with_backend(backend: Box<dyn ScoringBackend>) -> Self {
++        Self { backend }
++    }
++}
++
++impl Default for SemanticAnalyzer {
++    fn default() -> Self {
++        Self::new()
++    }
++}
++
++impl AnalyzerPlugin for SemanticAnalyzer {
++    fn id(&self) -> &str {
++        "semantic"
++    }
++
++    fn meta(&self) -> AnalyzerMeta {
++        AnalyzerMeta {
++            id: "semantic".into(),
++            name: "Semantic Analyzer".into(),
++            version: "1.0.0".into(),
++        }
++    }
++
++    fn dependencies(&self) -> Vec<AnalyzerDependency> {
++        Vec::new()
++    }
++
++    fn cost(&self) -> f32 {
++        0.3
++    }
++
++    fn analyze(
++        &self,
++        context: &AnalysisContext,
++        _prior_results: &AnalysisReport,
++    ) -> Result<Box<dyn Any + Send + Sync>, AnalysisError> {
++        let changes = context.change_operations();
++        let mut operation_scores = Vec::with_capacity(changes.len());
++
++        for (idx, op) in &changes {
++            let similarity = match op.kind {
++                EditKind::Replace => {
++                    let source_tokens = context.source_tokens_for_op(*idx).unwrap_or(&[]);
++                    let target_tokens = context.target_tokens_for_op(*idx).unwrap_or(&[]);
++
++                    // Extract text slices for each token
++                    let src_text = &context.diff.source.normalized;
++                    let tgt_text = &context.diff.target.normalized;
++
++                    let src_strs: Vec<&str> = source_tokens
++                        .iter()
++                        .filter_map(|t| {
++                            let s = t.span.start() as usize;
++                            let e = (t.span.end() as usize).min(src_text.len());
++                            if s <= e { Some(&src_text[s..e]) } else { None }
++                        })
++                        .collect();
++                    let tgt_strs: Vec<&str> = target_tokens
++                        .iter()
++                        .filter_map(|t| {
++                            let s = t.span.start() as usize;
++                            let e = (t.span.end() as usize).min(tgt_text.len());
++                            if s <= e { Some(&tgt_text[s..e]) } else { None }
++                        })
++                        .collect();
++
++                    self.backend.score(&src_strs, &tgt_strs)
++                }
++                EditKind::Insert | EditKind::Delete => 0.0,
++                EditKind::Equal => 1.0,
++            };
++
++            operation_scores.push(OperationSimilarity {
++                operation_index: *idx,
++                similarity,
++                method: self.backend.name().to_string(),
++            });
++        }
++
++        let overall_similarity = if operation_scores.is_empty() {
++            1.0
++        } else {
++            operation_scores.iter().map(|s| s.similarity).sum::<f64>()
++                / operation_scores.len() as f64
++        };
++
++        Ok(Box::new(SemanticResult {
++            operation_scores,
++            overall_similarity,
++        }))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn heuristic_identical_tokens() {
++        let score = HeuristicScoring.score(&["a", "b", "c"], &["a", "b", "c"]);
++        assert!((score - 1.0).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn heuristic_disjoint_tokens() {
++        let score = HeuristicScoring.score(&["a", "b"], &["x", "y"]);
++        assert!(score.abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn heuristic_partial_overlap() {
++        let score = HeuristicScoring.score(&["a", "b", "c"], &["b", "c", "d"]);
++        assert!((score - 0.5).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn heuristic_both_empty() {
++        let score = HeuristicScoring.score(&[], &[]);
++        assert!((score - 1.0).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn heuristic_one_empty() {
++        assert!(HeuristicScoring.score(&["a"], &[]).abs() < f64::EPSILON);
++        assert!(HeuristicScoring.score(&[], &["a"]).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn semantic_analyzer_id() {
++        assert_eq!(SemanticAnalyzer::new().id(), "semantic");
++    }
++
++    #[test]
++    fn semantic_analyzer_no_dependencies() {
++        assert!(SemanticAnalyzer::new().dependencies().is_empty());
++    }
++
++    #[test]
++    fn custom_backend() {
++        struct ConstantBackend(f64);
++        impl ScoringBackend for ConstantBackend {
++            fn score(&self, _: &[&str], _: &[&str]) -> f64 {
++                self.0
++            }
++            fn name(&self) -> &str {
++                "constant"
++            }
++        }
++        let analyzer = SemanticAnalyzer::with_backend(Box::new(ConstantBackend(0.42)));
++        assert_eq!(analyzer.id(), "semantic");
++    }
++}
+diff --git a/crates/core/src/analysis/builtins/stylistic.rs b/crates/core/src/analysis/builtins/stylistic.rs
+index 284aece..fe5e076 100644
+--- a/crates/core/src/analysis/builtins/stylistic.rs
++++ b/crates/core/src/analysis/builtins/stylistic.rs
+@@ -1,7 +1,416 @@
+ //! StylisticAnalyzer: voice shifts, tone shifts, structural style changes.
+-//!
+-//! Full implementation in plan 05-03.
++
++use core::any::Any;
++
++#[cfg(not(feature = "std"))]
++use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
++
++use crate::analysis::{
++    AnalysisContext, AnalysisError, AnalysisReport, AnalyzerDependency, AnalyzerMeta,
++    AnalyzerPlugin,
++};
++use crate::diff::edit_operation::EditKind;
++
++/// Detected voice type.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum Voice {
++    Active,
++    Passive,
++    Unknown,
++}
++
++/// A detected voice shift between source and target.
++#[derive(Debug, Clone)]
++pub struct VoiceShift {
++    pub operation_index: usize,
++    pub from: Voice,
++    pub to: Voice,
++    pub confidence: f64,
++}
++
++/// Tone measurement dimension.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum ToneDimension {
++    FormalInformal,
++    HedgingAssertive,
++}
++
++/// A detected tone shift.
++#[derive(Debug, Clone)]
++pub struct ToneShift {
++    pub operation_index: usize,
++    pub dimension: ToneDimension,
++    pub from_score: f64,
++    pub to_score: f64,
++    pub confidence: f64,
++}
++
++/// Structural style measurements.
++#[derive(Debug, Clone)]
++pub struct StructuralChanges {
++    pub source_avg_sentence_length: f64,
++    pub target_avg_sentence_length: f64,
++    pub sentence_length_delta: f64,
++    pub source_avg_word_length: f64,
++    pub target_avg_word_length: f64,
++    pub word_length_delta: f64,
++}
+ 
+ /// Result of stylistic analysis.
+ #[derive(Debug, Clone)]
+-pub struct StylisticResult;
++pub struct StylisticResult {
++    pub voice_shifts: Vec<VoiceShift>,
++    pub tone_shifts: Vec<ToneShift>,
++    pub structural_changes: StructuralChanges,
++}
++
++// ── Heuristic helpers ─────────────────────────────────────────
++
++const TO_BE_FORMS: &[&str] = &["am", "is", "are", "was", "were", "be", "been", "being"];
++
++const IRREGULAR_PAST_PARTICIPLES: &[&str] = &[
++    "made",
++    "done",
++    "gone",
++    "said",
++    "told",
++    "shown",
++    "known",
++    "given",
++    "taken",
++    "seen",
++    "found",
++    "thought",
++    "brought",
++    "bought",
++    "caught",
++    "taught",
++    "felt",
++    "left",
++    "held",
++    "kept",
++    "meant",
++    "met",
++    "paid",
++    "put",
++    "run",
++    "read",
++    "sent",
++    "set",
++    "sat",
++    "spent",
++    "stood",
++    "lost",
++    "cut",
++    "built",
++    "led",
++    "understood",
++    "written",
++    "broken",
++    "chosen",
++    "driven",
++    "eaten",
++    "fallen",
++    "forgotten",
++    "frozen",
++    "hidden",
++    "ridden",
++    "spoken",
++    "stolen",
++    "sworn",
++    "thrown",
++    "worn",
++];
++
++fn is_past_participle(word: &str) -> bool {
++    let lower = word.to_lowercase();
++    if IRREGULAR_PAST_PARTICIPLES.contains(&lower.as_str()) {
++        return true;
++    }
++    lower.ends_with("ed") || lower.ends_with("en") || lower.ends_with("wn") || lower.ends_with("ne")
++}
++
++fn passive_voice_ratio(words: &[&str]) -> f64 {
++    if words.len() < 2 {
++        return 0.0;
++    }
++    let mut passive_count = 0usize;
++    for window in words.windows(2) {
++        let w0 = window[0].to_lowercase();
++        if TO_BE_FORMS.contains(&w0.as_str()) && is_past_participle(window[1]) {
++            passive_count += 1;
++        }
++    }
++    passive_count as f64 / (words.len() - 1).max(1) as f64
++}
++
++fn classify_voice(words: &[&str]) -> Voice {
++    let ratio = passive_voice_ratio(words);
++    if ratio > 0.3 {
++        Voice::Passive
++    } else if ratio < 0.1 {
++        Voice::Active
++    } else {
++        Voice::Unknown
++    }
++}
++
++const HEDGING_WORDS: &[&str] = &[
++    "might",
++    "could",
++    "perhaps",
++    "possibly",
++    "somewhat",
++    "apparently",
++    "seemingly",
++    "arguably",
++    "presumably",
++    "likely",
++    "maybe",
++    "probably",
++    "suggest",
++    "suggests",
++    "may",
++    "seem",
++    "seems",
++    "sometimes",
++];
++
++const ASSERTIVE_WORDS: &[&str] = &[
++    "must",
++    "will",
++    "always",
++    "never",
++    "clearly",
++    "obviously",
++    "definitely",
++    "certainly",
++    "undoubtedly",
++    "absolutely",
++    "every",
++    "none",
++    "shall",
++    "undeniable",
++    "unquestionably",
++];
++
++fn hedging_assertive_score(words: &[&str]) -> f64 {
++    if words.is_empty() {
++        return 0.0;
++    }
++    let mut hedging = 0usize;
++    let mut assertive = 0usize;
++    for w in words {
++        let lower = w.to_lowercase();
++        if HEDGING_WORDS.contains(&lower.as_str()) {
++            hedging += 1;
++        }
++        if ASSERTIVE_WORDS.contains(&lower.as_str()) {
++            assertive += 1;
++        }
++    }
++    (hedging as f64 - assertive as f64) / words.len() as f64
++}
++
++fn avg_sentence_length_words(text: &str) -> f64 {
++    let sentences: Vec<&str> = text
++        .split(|c: char| c == '.' || c == '!' || c == '?')
++        .map(|s| s.trim())
++        .filter(|s| !s.is_empty())
++        .collect();
++    if sentences.is_empty() {
++        return 0.0;
++    }
++    let total_words: usize = sentences.iter().map(|s| s.split_whitespace().count()).sum();
++    total_words as f64 / sentences.len() as f64
++}
++
++fn avg_word_length_chars(words: &[&str]) -> f64 {
++    if words.is_empty() {
++        return 0.0;
++    }
++    let total: usize = words.iter().map(|w| w.len()).sum();
++    total as f64 / words.len() as f64
++}
++
++// ── Analyzer ──────────────────────────────────────────────────
++
++/// Stylistic analyzer detecting voice, tone, and structural changes.
++pub struct StylisticAnalyzer;
++
++impl AnalyzerPlugin for StylisticAnalyzer {
++    fn id(&self) -> &str {
++        "stylistic"
++    }
++
++    fn meta(&self) -> AnalyzerMeta {
++        AnalyzerMeta {
++            id: "stylistic".into(),
++            name: "Stylistic Analyzer".into(),
++            version: "1.0.0".into(),
++        }
++    }
++
++    fn dependencies(&self) -> Vec<AnalyzerDependency> {
++        Vec::new()
++    }
++
++    fn cost(&self) -> f32 {
++        0.4
++    }
++
++    fn analyze(
++        &self,
++        context: &AnalysisContext,
++        _prior_results: &AnalysisReport,
++    ) -> Result<Box<dyn Any + Send + Sync>, AnalysisError> {
++        let changes = context.change_operations();
++        let mut voice_shifts = Vec::new();
++        let mut tone_shifts = Vec::new();
++
++        let src_text = &context.diff.source.normalized;
++        let tgt_text = &context.diff.target.normalized;
++
++        for (idx, op) in &changes {
++            if op.kind != EditKind::Replace {
++                continue;
++            }
++
++            // Extract word strings for source and target
++            let src_tokens = context.source_tokens_for_op(*idx).unwrap_or(&[]);
++            let tgt_tokens = context.target_tokens_for_op(*idx).unwrap_or(&[]);
++
++            let src_words: Vec<&str> = src_tokens
++                .iter()
++                .filter_map(|t| {
++                    let s = t.span.start() as usize;
++                    let e = (t.span.end() as usize).min(src_text.len());
++                    if s <= e { Some(&src_text[s..e]) } else { None }
++                })
++                .collect();
++            let tgt_words: Vec<&str> = tgt_tokens
++                .iter()
++                .filter_map(|t| {
++                    let s = t.span.start() as usize;
++                    let e = (t.span.end() as usize).min(tgt_text.len());
++                    if s <= e { Some(&tgt_text[s..e]) } else { None }
++                })
++                .collect();
++
++            // Voice detection
++            let src_voice = classify_voice(&src_words);
++            let tgt_voice = classify_voice(&tgt_words);
++            if src_voice != tgt_voice && src_voice != Voice::Unknown && tgt_voice != Voice::Unknown
++            {
++                let confidence = 0.7; // heuristic-based, moderate confidence
++                voice_shifts.push(VoiceShift {
++                    operation_index: *idx,
++                    from: src_voice,
++                    to: tgt_voice,
++                    confidence,
++                });
++            }
++
++            // Tone detection (hedging/assertive)
++            let src_score = hedging_assertive_score(&src_words);
++            let tgt_score = hedging_assertive_score(&tgt_words);
++            let delta = (tgt_score - src_score).abs();
++            if delta > 0.15 {
++                tone_shifts.push(ToneShift {
++                    operation_index: *idx,
++                    dimension: ToneDimension::HedgingAssertive,
++                    from_score: src_score,
++                    to_score: tgt_score,
++                    confidence: (delta * 2.0).min(0.95),
++                });
++            }
++        }
++
++        // Structural changes from full document
++        let src_words_all: Vec<&str> = src_text.split_whitespace().collect();
++        let tgt_words_all: Vec<&str> = tgt_text.split_whitespace().collect();
++
++        let source_avg_sentence_length = avg_sentence_length_words(src_text);
++        let target_avg_sentence_length = avg_sentence_length_words(tgt_text);
++        let source_avg_word_length = avg_word_length_chars(&src_words_all);
++        let target_avg_word_length = avg_word_length_chars(&tgt_words_all);
++
++        let structural_changes = StructuralChanges {
++            source_avg_sentence_length,
++            target_avg_sentence_length,
++            sentence_length_delta: target_avg_sentence_length - source_avg_sentence_length,
++            source_avg_word_length,
++            target_avg_word_length,
++            word_length_delta: target_avg_word_length - source_avg_word_length,
++        };
++
++        Ok(Box::new(StylisticResult {
++            voice_shifts,
++            tone_shifts,
++            structural_changes,
++        }))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn passive_voice_detection() {
++        assert!(passive_voice_ratio(&["was", "thrown"]) > 0.0);
++    }
++
++    #[test]
++    fn active_voice_detection() {
++        assert!(passive_voice_ratio(&["he", "threw", "the", "ball"]).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn classify_voice_passive() {
++        assert_eq!(classify_voice(&["it", "was", "broken"]), Voice::Passive);
++    }
++
++    #[test]
++    fn classify_voice_active() {
++        assert_eq!(classify_voice(&["they", "broke", "it"]), Voice::Active);
++    }
++
++    #[test]
++    fn hedging_positive() {
++        assert!(hedging_assertive_score(&["it", "might", "possibly", "work"]) > 0.0);
++    }
++
++    #[test]
++    fn assertive_negative() {
++        assert!(hedging_assertive_score(&["you", "must", "always", "do"]) < 0.0);
++    }
++
++    #[test]
++    fn hedging_neutral() {
++        assert!(hedging_assertive_score(&["the", "cat", "sat"]).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn avg_sentence_length_test() {
++        let avg = avg_sentence_length_words("Hello world. How are you.");
++        assert!((avg - 2.5).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn avg_word_length_test() {
++        let avg = avg_word_length_chars(&["hi", "there", "world"]);
++        let expected = (2.0 + 5.0 + 5.0) / 3.0;
++        assert!((avg - expected).abs() < f64::EPSILON);
++    }
++
++    #[test]
++    fn stylistic_analyzer_id() {
++        assert_eq!(StylisticAnalyzer.id(), "stylistic");
++    }
++
++    #[test]
++    fn stylistic_analyzer_no_deps() {
++        assert!(StylisticAnalyzer.dependencies().is_empty());
++    }
++}
